@@ -28,7 +28,9 @@ Auf dem Handy die Seite öffnen und **„Zum Home-Bildschirm“** (iPhone, Safar
 
 ## Daten
 
-Alle Daten bleiben nur lokal im Browser des jeweiligen Geräts (localStorage). Um Daten zwischen PC und Handy zu übertragen, nutze **Einstellungen → Backup exportieren / importieren**.
+Die Daten werden immer lokal im Browser gespeichert (funktioniert auch offline). Mit einem **Konto** (Einstellungen → Konto & Synchronisierung) werden sie zusätzlich über Supabase auf allen Geräten synchronisiert. Die einmalige Einrichtung steht in [SYNC-EINRICHTEN.md](SYNC-EINRICHTEN.md).
+
+Ohne Konto kannst du Daten über **Einstellungen → Backup exportieren / importieren** übertragen.
 
 ## Lokal starten
 

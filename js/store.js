@@ -57,14 +57,15 @@
   PL.state = load();
   const listeners = [];
 
-  PL.save = function () {
+  /* opts.fromRemote = Änderung kam aus der Cloud (nicht erneut hochladen) */
+  PL.save = function (opts) {
     try { localStorage.setItem(KEY, JSON.stringify(PL.state)); } catch (e) { /* Speicher voll / privat */ }
-    listeners.forEach((fn) => fn());
+    listeners.forEach((fn) => fn(opts || {}));
   };
   PL.onChange = (fn) => listeners.push(fn);
-  PL.replaceState = function (next) {
+  PL.replaceState = function (next, opts) {
     PL.state = normalize(next);
-    PL.save();
+    PL.save(opts);
   };
 
   /* ---- Abfragen ---- */

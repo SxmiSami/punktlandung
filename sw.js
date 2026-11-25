@@ -1,8 +1,8 @@
 /* Service Worker: macht die App offline-fähig */
-const VERSION = 'pl-v1';
+const VERSION = 'pl-v2';
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
-  'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/app.js',
+  'js/config.js', 'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/sync.js', 'js/app.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 
@@ -18,8 +18,9 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  const isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
-  if (url.origin !== location.origin && !isFont) return;
+  // Eigene Dateien, Schriften und die Supabase-Bibliothek cachen – Datenbank-Anfragen nie
+  const cacheable = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdn.jsdelivr.net';
+  if (url.origin !== location.origin && !cacheable) return;
 
   // Netzwerk zuerst (damit Updates sofort ankommen), sonst Cache
   e.respondWith(

@@ -234,6 +234,85 @@
     });
   };
 
+  /* ---------- Anmelden / Registrieren ---------- */
+  PL.authSheet = function (mode = 'login') {
+    const S = PL.sync;
+    if (!S || !S.enabled) { PL.toast('Die Synchronisierung ist noch nicht eingerichtet'); return; }
+    const html = `
+      ${PL.sheetHead('Dein Konto', 'Melde dich an, damit deine Noten auf allen Geräten gleich sind.')}
+      <div class="seg seg-block" data-seg="mode" style="margin-bottom:16px">${segHtml([['login', 'Anmelden'], ['signup', 'Registrieren']], mode)}</div>
+      <form data-auth novalidate>
+        <div class="field"><label for="aEmail">E-Mail</label><input id="aEmail" class="input" type="email" autocomplete="email" inputmode="email" required autofocus></div>
+        <div class="field"><label for="aPw">Passwort</label><input id="aPw" class="input" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" minlength="6" required>
+          <span class="hint" data-pw-hint ${mode === 'login' ? 'hidden' : ''}>Mindestens 6 Zeichen</span></div>
+        <div class="auth-msg" data-msg hidden></div>
+        <div class="sheet-foot col">
+          <button type="submit" class="btn btn-primary" data-submit>${mode === 'login' ? 'Anmelden' : 'Konto erstellen'}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-forgot ${mode === 'login' ? '' : 'hidden'}>Passwort vergessen?</button>
+        </div>
+      </form>`;
+    PL.openSheet(html, {
+      onMount(sh) {
+        const msg = sh.querySelector('[data-msg]');
+        const submit = sh.querySelector('[data-submit]');
+        const show = (text, ok) => { msg.hidden = !text; msg.textContent = text || ''; msg.classList.toggle('ok', !!ok); };
+        bindSeg(sh.querySelector('[data-seg="mode"]'), (v) => {
+          mode = v;
+          submit.textContent = v === 'login' ? 'Anmelden' : 'Konto erstellen';
+          sh.querySelector('[data-forgot]').hidden = v !== 'login';
+          sh.querySelector('[data-pw-hint]').hidden = v === 'login';
+          sh.querySelector('#aPw').autocomplete = v === 'login' ? 'current-password' : 'new-password';
+          show('');
+        });
+        sh.querySelector('[data-auth]').onsubmit = async (e) => {
+          e.preventDefault();
+          const email = sh.querySelector('#aEmail').value.trim();
+          const pw = sh.querySelector('#aPw').value;
+          if (!email || !pw) { show('Bitte E-Mail und Passwort eingeben.'); return; }
+          submit.disabled = true; show('');
+          try {
+            if (mode === 'login') {
+              const err = await S.signIn(email, pw);
+              if (err) { show(err); return; }
+              PL.closeSheet();
+              PL.toast('Angemeldet – deine Noten werden synchronisiert');
+            } else {
+              const r = await S.signUp(email, pw);
+              if (r.error) { show(r.error); return; }
+              if (r.needsConfirm) show('Fast geschafft! Wir haben dir eine E-Mail geschickt. Klick auf den Link darin und melde dich danach hier an.', true);
+              else { PL.closeSheet(); PL.toast('Konto erstellt – du bist angemeldet'); }
+            }
+          } finally { submit.disabled = false; }
+        };
+        sh.querySelector('[data-forgot]').onclick = async () => {
+          const email = sh.querySelector('#aEmail').value.trim();
+          if (!email) { show('Gib zuerst deine E-Mail-Adresse ein.'); return; }
+          const err = await S.resetPassword(email);
+          show(err || 'Wir haben dir einen Link zum Zurücksetzen geschickt.', !err);
+        };
+      },
+    });
+  };
+
+  PL.newPasswordSheet = function () {
+    PL.openSheet(`${PL.sheetHead('Neues Passwort')}
+      <form data-pwform>
+        <div class="field"><label for="nPw">Neues Passwort</label><input id="nPw" class="input" type="password" autocomplete="new-password" minlength="6" autofocus></div>
+        <div class="auth-msg" data-msg hidden></div>
+        <div class="sheet-foot"><button type="submit" class="btn btn-primary">Speichern</button></div>
+      </form>`, {
+      onMount(sh) {
+        sh.querySelector('[data-pwform]').onsubmit = async (e) => {
+          e.preventDefault();
+          const err = await PL.sync.updatePassword(sh.querySelector('#nPw').value);
+          const msg = sh.querySelector('[data-msg]');
+          if (err) { msg.hidden = false; msg.textContent = err; return; }
+          PL.closeSheet(); PL.toast('Passwort geändert');
+        };
+      },
+    });
+  };
+
   /* ---------- Eigenes Fach im Setup ---------- */
   PL.customSubjectSheet = function (onAdd) {
     const f = { color: PL.COLORS[Math.floor(Math.random() * PL.COLORS.length)] };

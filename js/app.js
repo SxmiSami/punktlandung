@@ -16,6 +16,8 @@
     document.getElementById('sideNav').innerHTML = PL.NAV.map((n) =>
       `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}</a>`).join('');
     document.querySelectorAll('[data-nav="einstellungen"]').forEach((a) => a.classList.toggle('active', active === 'einstellungen'));
+    const ss = document.getElementById('sideSettings');
+    if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
     const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.label}</span></a>`;
@@ -86,7 +88,17 @@
       if (PL.state.subjects.length) PL.confirmSheet('Beispieldaten laden?', 'Deine aktuellen Daten werden ersetzt. Exportiere vorher ein Backup, wenn du sie behalten willst.', 'Ersetzen', go);
       else go();
     },
-    'reset': () => PL.confirmSheet('Alles löschen?', 'Alle Fächer, Noten und Termine werden von diesem Gerät gelöscht. Das kann nicht rückgängig gemacht werden.', 'Endgültig löschen', () => {
+    'login': () => PL.authSheet('login'),
+    'signup': () => PL.authSheet('signup'),
+    'sync-now': () => PL.sync.syncNow && PL.sync.syncNow(),
+    'logout': () => PL.confirmSheet('Abmelden?', 'Deine Noten bleiben in deinem Konto gespeichert und werden von diesem Gerät entfernt. Melde dich einfach wieder an, um sie zurückzuholen.', 'Abmelden', async () => {
+      await PL.sync.signOut();
+      location.hash = '#/';
+      PL.toast('Abgemeldet');
+    }),
+    'reset': () => PL.confirmSheet('Alles löschen?', PL.sync.user
+      ? 'Alle Fächer, Noten und Termine werden gelöscht – auf allen Geräten, die mit deinem Konto verbunden sind. Das kann nicht rückgängig gemacht werden.'
+      : 'Alle Fächer, Noten und Termine werden von diesem Gerät gelöscht. Das kann nicht rückgängig gemacht werden.', 'Endgültig löschen', () => {
       PL.replaceState(PL.emptyState()); location.hash = '#/'; PL.toast('Alle Daten gelöscht');
     }),
     'export': () => {

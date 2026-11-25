@@ -16,7 +16,7 @@
   function pageHead(eyebrow, title, actions = '') {
     return `<header class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1></div><div class="head-actions">${actions}</div></header>`;
   }
-  const settingsBtn = `<a class="icon-btn hide-desk" href="#/einstellungen" aria-label="Einstellungen">${ic('settings')}</a>`;
+  const settingsBtnHtml = () => `<a class="icon-btn hide-desk" href="#/einstellungen" aria-label="Einstellungen">${ic('settings')}${PL.syncDot()}</a>`;
 
   /* ================= Willkommen ================= */
   PL.views = {};
@@ -28,6 +28,7 @@
       <div class="welcome-actions">
         <button class="btn btn-primary" data-action="setup">${ic('sparkle')} Fächer einrichten</button>
         <button class="btn" data-action="demo">Mit Beispieldaten ausprobieren</button>
+        ${PL.sync.enabled && !PL.sync.user ? `<button class="btn btn-ghost" data-action="login">Schon ein Konto? <b style="color:var(--accent-2)">Anmelden</b></button>` : ''}
       </div>
       <div class="feature-list">
         <div>${ic('trend')}Live-Abischnitt</div>
@@ -156,7 +157,7 @@
     const subs = PL.sortedSubjects();
 
     return `<div class="page view">
-      ${pageHead(`${semPill()}<span>${greet}</span>`, name, settingsBtn)}
+      ${pageHead(`${semPill()}<span>${greet}</span>`, name, settingsBtnHtml())}
       <div class="grid grid-dash">
         <div class="span-2">${heroCard({ link: true })}</div>
 
@@ -366,7 +367,7 @@
     const g = goalHtml();
 
     return `<div class="page view">
-      ${pageHead(`${semPill()}<span>Prognose & Berechnung</span>`, 'Abitur', settingsBtn)}
+      ${pageHead(`${semPill()}<span>Prognose & Berechnung</span>`, 'Abitur', settingsBtnHtml())}
       <div style="margin-bottom:18px">${heroCard()}</div>
       <div class="abi-grid">
         <section class="card">
@@ -464,6 +465,33 @@
     </div>`;
   };
 
+  /* ================= Konto ================= */
+  function accountCard() {
+    const S = PL.sync;
+    const head = `<div class="card-head"><div><h2 class="card-title">${ic('cloud')} Konto & Synchronisierung</h2><div class="card-sub">Deine Noten auf Handy, Tablet und PC</div></div></div>`;
+    if (!S.enabled) {
+      return `<section class="card">${head}<p class="hint" style="margin:0">Der Online-Speicher ist noch nicht verbunden. Die Anleitung steht in der Datei <b>SYNC-EINRICHTEN.md</b> im Projekt.</p></section>`;
+    }
+    if (!S.user) {
+      return `<section class="card">${head}
+        <p style="margin:0 0 14px;color:var(--text-2);font-size:14px">Melde dich an, dann sind deine Noten auf jedem Gerät automatisch auf dem gleichen Stand.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" data-action="login">Anmelden</button>
+          <button class="btn" data-action="signup">Konto erstellen</button>
+        </div></section>`;
+    }
+    return `<section class="card">${head}
+      <div class="account-row">
+        <span class="avatar">${esc((S.user.email || '?').charAt(0).toUpperCase())}</span>
+        <div style="min-width:0;flex:1"><div class="row-title">${esc(S.user.email || '')}</div>
+          <div class="row-sub" style="display:flex;align-items:center;gap:7px"><span class="sync-dot static" data-sync-dot data-s="${S.status}"></span><span data-sync-label>${esc(PL.syncLabel())}</span></div></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-sm" data-action="sync-now">${ic('refresh', 'i-sm')} Jetzt synchronisieren</button>
+        <button class="btn btn-sm btn-ghost" data-action="logout">Abmelden</button>
+      </div></section>`;
+  }
+
   /* ================= Einstellungen ================= */
   PL.views.settings = function () {
     const s = st().settings;
@@ -487,8 +515,10 @@
             <label class="switch"><input type="checkbox" data-setting="prognosis" ${s.prognosis ? 'checked' : ''}><span></span></label></div>
         </section>
 
+        ${accountCard()}
+
         <section class="card">
-          <div class="card-head"><div><h2 class="card-title">Daten</h2><div class="card-sub">Alles wird nur lokal auf diesem Gerät gespeichert</div></div></div>
+          <div class="card-head"><div><h2 class="card-title">Daten</h2><div class="card-sub">${PL.sync.user ? 'Gespeichert auf diesem Gerät und in deinem Konto' : 'Ohne Konto nur auf diesem Gerät gespeichert'}</div></div></div>
           <div class="opt-row"><div><div class="t">Backup exportieren</div><div class="d">Als Datei sichern oder aufs Handy übertragen</div></div><button class="btn btn-sm" data-action="export">${ic('download', 'i-sm')} Export</button></div>
           <div class="opt-row"><div><div class="t">Backup importieren</div><div class="d">Ersetzt die aktuellen Daten</div></div><button class="btn btn-sm" data-action="import">${ic('upload', 'i-sm')} Import</button></div>
           <div class="opt-row"><div><div class="t">Fächer neu einrichten</div><div class="d">Fächer, LKs und Prüfungsfächer wählen</div></div><button class="btn btn-sm" data-action="setup">Einrichten</button></div>
