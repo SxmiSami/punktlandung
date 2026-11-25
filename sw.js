@@ -1,5 +1,5 @@
 /* Service Worker: macht die App offline-fähig */
-const VERSION = 'pl-v2';
+const VERSION = 'pl-v3';
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
   'js/config.js', 'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/sync.js', 'js/app.js',

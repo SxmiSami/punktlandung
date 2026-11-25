@@ -3,6 +3,6 @@
    Der "anon public"-Schlüssel ist absichtlich öffentlich – deine Daten schützt
    die Datenbank-Regel (Row Level Security), sodass jeder nur seine eigenen Noten sieht. */
 window.PL_CONFIG = {
-  supabaseUrl: '',      // z. B. 'https://abcdefgh.supabase.co'
-  supabaseAnonKey: '',  // langer Schlüssel, beginnt mit 'eyJ...'
+  supabaseUrl: 'https://quurwakilvvunjhcbmzz.supabase.co',
+  supabaseAnonKey: 'sb_publishable_jvnIIUVtss5IG27f01JB4Q_5DX3o3SK', // Publishable key (öffentlich)
 };
