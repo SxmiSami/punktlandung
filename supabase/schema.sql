@@ -7,6 +7,10 @@ create table if not exists public.user_data (
   updated_at timestamptz not null default now()
 );
 
+-- Nur angemeldete Nutzer dürfen über die API auf die Tabelle zugreifen
+revoke all on public.user_data from anon;
+grant select, insert, update, delete on public.user_data to authenticated;
+
 -- Jeder darf nur seine eigenen Daten sehen und ändern
 alter table public.user_data enable row level security;
 
