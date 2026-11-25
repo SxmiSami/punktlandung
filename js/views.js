@@ -7,8 +7,9 @@
   PL.NAV = [
     { id: '', label: 'Übersicht', icon: 'home' },
     { id: 'faecher', label: 'Fächer', icon: 'layers' },
+    { id: 'plan', label: 'Kalender', icon: 'calendar' },
+    { id: 'aufgaben', label: 'Aufgaben', icon: 'tasks' },
     { id: 'abitur', label: 'Abitur', icon: 'cap' },
-    { id: 'termine', label: 'Termine', icon: 'calendar' },
   ];
 
   const semPill = () => `<button class="hero-pill sem-switch" data-action="cycle-sem" title="Halbjahr wechseln" style="background:var(--accent-soft);color:var(--accent-2)">${esc(PL.semName(st().settings.currentSem))} ${ic('chevron-down', 'i-sm')}</button>`;
@@ -36,6 +37,7 @@
         <div>${ic('layers')}Q1.1 bis Q2.2</div>
         <div>${ic('target')}Ziel-Rechner</div>
       </div>
+      <div class="hint" style="margin-top:22px">Version ${PL.VERSION}</div>
     </div></div>`;
 
   /* ================= Einrichtung ================= */
@@ -171,10 +173,8 @@
           <div class="list">${semRows}</div>
         </section>
 
-        <section class="card span-2">
-          <div class="card-head"><div><h2 class="card-title">${ic('trend')} Verlauf</h2><div class="card-sub">Entwicklung deines Durchschnitts über alle Noten</div></div></div>
-          ${PL.trendChart(PL.timeline())}
-        </section>
+        ${PL.scheduleCard()}
+        ${PL.tasksCard()}
 
         <section class="card">
           <div class="card-head"><h2 class="card-title">${ic('calendar')} Termine</h2><a class="link-btn" href="#/termine">Alle ${ic('chevron-right', 'i-sm')}</a></div>
@@ -182,6 +182,16 @@
         </section>
 
         <section class="card span-2">
+          <div class="card-head"><div><h2 class="card-title">${ic('trend')} Verlauf</h2><div class="card-sub">Entwicklung deines Durchschnitts über alle Noten</div></div></div>
+          ${PL.trendChart(PL.timeline())}
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2 class="card-title">${ic('sparkle')} Letzte Noten</h2></div>
+          ${recent.length ? `<div class="list">${recent.map(gradeRow).join('')}</div>` : `<div class="empty"><b>Noch keine Noten</b>Tippe auf „+“, um deine erste Note einzutragen.</div>`}
+        </section>
+
+        <section class="card span-full">
           <div class="card-head"><h2 class="card-title">${ic('layers')} Deine Fächer</h2><a class="link-btn" href="#/faecher">Alle ${ic('chevron-right', 'i-sm')}</a></div>
           <div class="mini-subjs">${subs.map((sub) => {
             const a = PL.subjectAvg(sub.id);
@@ -189,11 +199,6 @@
               <span class="subj-code" style="--c:${sub.color}">${esc(sub.short)}</span>
               <div class="nm">${esc(sub.name)}</div>${PL.badge(a, { dec: 1 })}</a>`;
           }).join('')}</div>
-        </section>
-
-        <section class="card">
-          <div class="card-head"><h2 class="card-title">${ic('sparkle')} Letzte Noten</h2></div>
-          ${recent.length ? `<div class="list">${recent.map(gradeRow).join('')}</div>` : `<div class="empty"><b>Noch keine Noten</b>Tippe auf „+“, um deine erste Note einzutragen.</div>`}
         </section>
 
         <section class="card span-full">
@@ -442,7 +447,7 @@
   };
 
   /* ================= Termine ================= */
-  PL.views.events = function () {
+  PL.views.events = function (seg) {
     const today = PL.today();
     const evs = st().events.slice().sort((a, b) => a.date.localeCompare(b.date));
     const up = evs.filter((e) => e.date >= today);
@@ -450,7 +455,7 @@
     const week = up.filter((e) => PL.daysUntil(e.date) <= 7), later = up.filter((e) => PL.daysUntil(e.date) > 7);
     const sec = (title, arr, fn) => arr.length ? `<div class="sec-title">${title}<span>${arr.length}</span></div><section class="card" style="padding:8px 10px;margin-bottom:16px"><div class="list">${arr.map(fn).join('')}</div></section>` : '';
     return `<div class="page view">
-      ${pageHead(`${up.length} anstehend`, 'Termine', `<button class="btn btn-primary" data-action="add-event">${ic('plus', 'i-sm')} Termin</button>`)}
+      ${pageHead(seg || `${up.length} anstehend`, 'Kalender', `<button class="btn btn-primary" data-action="add-event">${ic('plus', 'i-sm')} Termin</button>`)}
       <div style="max-width:760px">
       ${!evs.length ? `<div class="empty"><b>Keine Termine</b>Trag Klausuren, Tests und Abiprüfungen ein – sie erscheinen mit Countdown in deiner Übersicht.<br><button class="btn btn-primary btn-sm" data-action="add-event">${ic('plus', 'i-sm')} Ersten Termin anlegen</button></div>` : ''}
       ${sec('Nächste 7 Tage', week, eventRow)}
@@ -498,7 +503,7 @@
     const s = st().settings;
     const seg = (key, opts) => `<div class="seg">${opts.map(([v, l]) => `<button class="${String(s[key]) === String(v) ? 'on' : ''}" data-action="setting" data-key="${key}" data-v="${v}">${l}</button>`).join('')}</div>`;
     return `<div class="page view">
-      ${pageHead('Punktlandung', 'Einstellungen')}
+      ${pageHead(`Punktlandung · Version ${PL.VERSION}`, 'Einstellungen')}
       <div class="grid" style="max-width:760px">
         <section class="card">
           <div class="card-head"><h2 class="card-title">Profil & Darstellung</h2></div>
@@ -516,6 +521,15 @@
             <label class="switch"><input type="checkbox" data-setting="prognosis" ${s.prognosis ? 'checked' : ''}><span></span></label></div>
         </section>
 
+        <section class="card">
+          <div class="card-head"><div><h2 class="card-title">${ic('clock')} Stundenplan</h2><div class="card-sub">${st().lessons.length} Stunden eingetragen</div></div><a class="link-btn" href="#/plan">Öffnen ${ic('chevron-right', 'i-sm')}</a></div>
+          <div class="opt-row"><div><div class="t">A/B-Wochen</div><div class="d">Für Stunden, die nur jede zweite Woche stattfinden</div></div>
+            <label class="switch"><input type="checkbox" data-setting="abWeeks" ${s.abWeeks ? 'checked' : ''}><span></span></label></div>
+          ${s.abWeeks ? `<div class="opt-row"><div><div class="t">Diese Woche ist eine …</div><div class="d">KW ${PL.isoWeek(new Date())}</div></div>
+            <div class="seg"><button class="${PL.weekType(new Date()) === 'A' ? 'on' : ''}" data-action="set-ab" data-v="A">A-Woche</button><button class="${PL.weekType(new Date()) === 'B' ? 'on' : ''}" data-action="set-ab" data-v="B">B-Woche</button></div></div>` : ''}
+          <div class="opt-row"><div><div class="t">Stundenzeiten</div><div class="d">${s.periods.length} Stunden · ${esc(s.periods[0].start)} bis ${esc(s.periods[s.periods.length - 1].end)}</div></div><button class="btn btn-sm" data-action="edit-periods">${ic('edit', 'i-sm')} Bearbeiten</button></div>
+        </section>
+
         ${accountCard()}
 
         <section class="card">
@@ -531,6 +545,7 @@
           <div class="card-head"><h2 class="card-title">${ic('info')} Als App installieren</h2></div>
           <p style="margin:0;color:var(--text-2);font-size:14px"><b>iPhone/iPad:</b> In Safari auf „Teilen“ → „Zum Home-Bildschirm“.<br><b>Android:</b> Im Chrome-Menü „App installieren“.<br><b>PC:</b> In Chrome/Edge auf das Installieren-Symbol in der Adressleiste.</p>
         </section>
+        <div class="about"><span class="brand-mark" aria-hidden="true"></span><div><b>Punktlandung</b><span>Version ${PL.VERSION}</span></div></div>
       </div>
     </div>`;
   };

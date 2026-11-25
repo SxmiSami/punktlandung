@@ -19,6 +19,9 @@
     lkWeight: 2,            // LK zählt in Block I doppelt
     klausurShare: 50,       // Anteil Klausuren an der Halbjahresnote in %
     prognosis: true,        // fehlende Noten hochrechnen
+    periods: PL.DEFAULT_PERIODS.map((p) => Object.assign({}, p)),
+    abWeeks: false,         // A/B-Wochen im Stundenplan
+    abRef: null,            // Montag (ISO) einer A-Woche
   });
 
   PL.emptyState = () => ({
@@ -29,6 +32,8 @@
     overrides: {},
     exams: [0, 1, 2, 3, 4].map((slot) => ({ slot, subjectId: null, s: null, m: null })),
     events: [],
+    lessons: [],            // { id, subjectId, day 0–4, period 1–n, room, week null|'A'|'B' }
+    tasks: [],              // { id, subjectId, title, due, important, done }
   });
 
   function normalize(s) {
@@ -39,6 +44,9 @@
     out.subjects = Array.isArray(s.subjects) ? s.subjects : [];
     out.grades = Array.isArray(s.grades) ? s.grades : [];
     out.events = Array.isArray(s.events) ? s.events : [];
+    out.lessons = Array.isArray(s.lessons) ? s.lessons : [];
+    out.tasks = Array.isArray(s.tasks) ? s.tasks : [];
+    if (!Array.isArray(out.settings.periods) || !out.settings.periods.length) out.settings.periods = PL.DEFAULT_PERIODS.map((p) => Object.assign({}, p));
     out.overrides = s.overrides && typeof s.overrides === 'object' ? s.overrides : {};
     const ex = Array.isArray(s.exams) ? s.exams : [];
     out.exams = [0, 1, 2, 3, 4].map((slot) => Object.assign({ slot, subjectId: null, s: null, m: null }, ex.find((e) => e && e.slot === slot) || {}));
@@ -100,6 +108,8 @@
     st.subjects = st.subjects.filter((s) => s.id !== id);
     st.grades = st.grades.filter((g) => g.subjectId !== id);
     st.events = st.events.filter((e) => e.subjectId !== id);
+    st.lessons = st.lessons.filter((l) => l.subjectId !== id);
+    st.tasks = st.tasks.filter((t) => t.subjectId !== id);
     delete st.overrides[id];
     st.exams.forEach((e) => { if (e.subjectId === id) { e.subjectId = null; e.s = null; e.m = null; } });
     PL.save();
@@ -116,6 +126,18 @@
     if (i >= 0) PL.state.events[i] = e; else PL.state.events.push(Object.assign({ id: PL.uid() }, e));
     PL.save();
   };
+  PL.upsertTask = function (t) {
+    const i = PL.state.tasks.findIndex((x) => x.id === t.id);
+    if (i >= 0) PL.state.tasks[i] = t; else PL.state.tasks.push(Object.assign({ id: PL.uid() }, t));
+    PL.save();
+  };
+  PL.deleteTask = function (id) {
+    const t = PL.state.tasks.find((x) => x.id === id);
+    PL.state.tasks = PL.state.tasks.filter((x) => x.id !== id);
+    PL.save();
+    return t;
+  };
+
   PL.deleteEvent = function (id) {
     const e = PL.state.events.find((x) => x.id === id);
     PL.state.events = PL.state.events.filter((x) => x.id !== id);

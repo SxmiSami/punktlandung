@@ -11,19 +11,30 @@
   }
 
   function renderNav(r) {
-    const active = r.name === 'fach' ? 'faecher' : r.name;
+    const active = r.name === 'fach' ? 'faecher' : r.name === 'termine' ? 'plan' : r.name;
     const hidden = r.name === 'setup' || !PL.state.subjects.length;
+    const openTasks = PL.state.tasks.filter((t) => !t.done).length;
     document.getElementById('sideNav').innerHTML = PL.NAV.map((n) =>
-      `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}</a>`).join('');
+      `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}${n.id === 'aufgaben' && openTasks ? `<span class="count">${openTasks}</span>` : ''}</a>`).join('');
+    const ver = document.getElementById('sideVersion');
+    if (ver) ver.textContent = 'Version ' + PL.VERSION;
     document.querySelectorAll('[data-nav="einstellungen"]').forEach((a) => a.classList.toggle('active', active === 'einstellungen'));
     const ss = document.getElementById('sideSettings');
     if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
-    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.label}</span></a>`;
-    tb.innerHTML = tab(PL.NAV[0]) + tab(PL.NAV[1]) +
-      `<button class="tab-fab" data-action="add-grade" aria-label="Note eintragen">${ic('plus')}</button>` +
-      tab(PL.NAV[2]) + tab(PL.NAV[3]);
+    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.label}</span>${n.id === 'aufgaben' && openTasks ? `<i class="tab-badge">${openTasks}</i>` : ''}</a>`;
+    tb.innerHTML = PL.NAV.map(tab).join('');
+    // Schwebender +-Knopf: passt sich der aktuellen Seite an
+    const fab = document.getElementById('fab');
+    const fabAction = r.name === 'aufgaben' ? ['add-task', 'Aufgabe hinzufügen']
+      : (r.name === 'plan' && PL.ui.planMode === 'week') ? ['add-lesson', 'Stunde eintragen']
+      : (r.name === 'termine' || r.name === 'plan') ? ['add-event', 'Termin hinzufügen']
+      : ['add-grade', 'Note eintragen'];
+    fab.dataset.action = fabAction[0];
+    fab.setAttribute('aria-label', fabAction[1]);
+    fab.title = fabAction[1];
+    fab.hidden = hidden || r.name === 'einstellungen';
   }
 
   function render() {
@@ -41,7 +52,9 @@
         if (PL.ui.detailFor !== r.arg) { PL.ui.detailFor = r.arg; PL.ui.detailSem = PL.state.settings.currentSem; }
         html = PL.views.subject(r.arg); break;
       case 'abitur': html = PL.views.abitur(); break;
-      case 'termine': html = PL.views.events(); break;
+      case 'termine': html = PL.views.plan('events'); break;
+      case 'plan': html = PL.views.plan(); break;
+      case 'aufgaben': html = PL.views.tasks(); break;
       case 'einstellungen': html = PL.views.settings(); break;
       case 'setup': html = PL.views.setup(); break;
       default: html = PL.views.dashboard();
@@ -51,7 +64,7 @@
     renderNav(r);
     if (changed) { window.scrollTo(0, 0); lastRoute = key; }
     else { main.querySelectorAll('.view').forEach((v) => (v.style.animation = 'none')); window.scrollTo(0, y); }
-    const titles = { '': 'Übersicht', faecher: 'Fächer', fach: 'Fach', abitur: 'Abitur', termine: 'Termine', einstellungen: 'Einstellungen', setup: 'Einrichtung' };
+    const titles = { '': 'Übersicht', faecher: 'Fächer', fach: 'Fach', abitur: 'Abitur', termine: 'Termine', plan: 'Stundenplan', aufgaben: 'Aufgaben', einstellungen: 'Einstellungen', setup: 'Einrichtung' };
     document.title = (titles[r.name] || 'Übersicht') + ' · Punktlandung';
   }
   PL.render = render;
@@ -71,6 +84,21 @@
       const e = PL.state.events.find((x) => x.id === d.id);
       if (!e) return;
       PL.gradeSheet({ subjectId: e.subjectId, cat: e.type === 'Klausur' ? 'K' : 'S', title: e.title || e.type, eventId: e.id });
+    },
+    'add-task': (d) => PL.taskSheet({ subjectId: d.subject || (route().name === 'fach' ? route().arg : null) }),
+    'open-task': (d) => PL.taskSheet({ id: d.id }),
+    'toggle-task': (d) => PL.toggleTask(d.id),
+    'task-filter': (d) => { PL.ui.taskFilter = d.v; render(); },
+    'add-lesson': (d) => PL.lessonSheet({ day: d.day != null ? d.day : Math.min(4, (new Date().getDay() + 6) % 7), period: d.period || 1 }),
+    'edit-lesson': (d) => PL.lessonSheet({ ids: d.ids }),
+    'plan-week': (d) => { const v = Number(d.v); PL.ui.planWeek = v === 0 ? 0 : PL.ui.planWeek + v; render(); },
+    'plan-mode': (d) => { PL.ui.planMode = d.v; if (route().name === 'termine' && d.v === 'week') location.hash = '#/plan'; else render(); },
+    'edit-periods': () => PL.periodsSheet(),
+    'set-ab': (d) => {
+      const mon = PL.mondayOf(new Date());
+      PL.state.settings.abRef = PL.isoDate(d.v === 'A' ? mon : PL.addDays(mon, -7));
+      PL.save();
+      PL.toast(`Diese Woche ist jetzt eine ${d.v}-Woche`);
     },
     'set-sem': (d) => { PL.state.settings.currentSem = Number(d.sem); PL.save(); PL.toast(`Aktuelles Halbjahr: ${PL.semName(Number(d.sem))}`); },
     'cycle-sem': () => { const s = PL.state.settings; s.currentSem = (s.currentSem + 1) % 4; PL.save(); },
@@ -180,6 +208,7 @@
     const t = e.target;
     if (t.dataset.setting) {
       PL.state.settings[t.dataset.setting] = t.type === 'checkbox' ? t.checked : t.value.trim();
+      if (t.dataset.setting === 'abWeeks' && t.checked && !PL.state.settings.abRef) PL.state.settings.abRef = PL.isoDate(PL.mondayOf(new Date()));
       PL.save();
     }
     if (t.dataset.setupExam != null && PL.ui.setup) {

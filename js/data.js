@@ -1,6 +1,17 @@
 /* Statische Daten: Farben, Fächervorlagen, Notentabelle */
 window.PL = window.PL || {};
 
+/* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
+PL.VERSION = '0.2.0';
+
+/* Standard-Stundenzeiten (in den Einstellungen änderbar) */
+PL.DEFAULT_PERIODS = [
+  { start: '07:45', end: '08:30' }, { start: '08:35', end: '09:20' },
+  { start: '09:40', end: '10:25' }, { start: '10:30', end: '11:15' },
+  { start: '11:30', end: '12:15' }, { start: '12:20', end: '13:05' },
+  { start: '14:00', end: '14:45' }, { start: '14:45', end: '15:30' },
+];
+
 PL.COLORS = [
   '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#14B8A6',
   '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#D946EF', '#EC4899', '#64748B'
@@ -87,9 +98,32 @@ PL.demoState = function () {
     ev(M, -2, 'Test', 'Test Stochastik'),
   ];
 
+  const L = (s, day, from, to, room, week) => {
+    const out = [];
+    for (let p = from; p <= to; p++) out.push({ id: PL.uid(), subjectId: s.id, day, period: p, room, week: week || null });
+    return out;
+  };
+  const lessons = [].concat(
+    L(IF, 0, 1, 2, 'C127'), L(D, 0, 3, 4, 'D209'), L(KR, 0, 5, 5, 'D212'), L(E, 0, 6, 6, 'D108'),
+    L(GE, 1, 1, 2, 'C217'), L(EK, 1, 3, 4, 'H007'), L(E, 1, 5, 6, 'D108'), L(SP, 1, 7, 8, 'Halle', 'A'), L(M, 1, 7, 8, 'D208', 'B'),
+    L(IF, 2, 1, 2, 'C127'), L(D, 2, 3, 4, 'D209'), L(KU, 2, 5, 5, 'K04'), L(EK, 2, 6, 6, 'H007'), L(SP, 2, 7, 8, 'Halle'),
+    L(KU, 3, 1, 2, 'K04'), L(M, 3, 3, 4, 'D208'), L(PH, 3, 5, 5, 'D208'), L(GE, 3, 6, 6, 'C217'),
+    L(KR, 4, 1, 2, 'D212'), L(PH, 4, 3, 4, 'D208'), L(IF, 4, 5, 5, 'C127'), L(D, 4, 6, 6, 'D209')
+  );
+  const t = (s, days, title, important, done) => ({ id: PL.uid(), subjectId: s.id, title, due: ahead(days), important: !!important, done: !!done });
+  const tasks = [
+    t(KU, 1, 'Skizzen für die Mappe fertigstellen'),
+    t(IF, 2, 'SQL-Abfragen Aufgabe 3–5'),
+    t(D, 5, 'Faust I bis Szene 12 lesen'),
+    t(E, 5, 'Mindmap zur Kurzgeschichte', true),
+    t(M, -1, 'Stochastik-Blatt 2', false, true),
+  ];
+
   return {
     version: 1,
-    settings: Object.assign(PL.defaultSettings(), { name: 'Alex', currentSem: 2 }),
+    settings: Object.assign(PL.defaultSettings(), { name: 'Alex', currentSem: 2, abWeeks: true, abRef: PL.isoDate(PL.mondayOf(today)) }),
+    lessons,
+    tasks,
     subjects,
     grades,
     overrides: {},
