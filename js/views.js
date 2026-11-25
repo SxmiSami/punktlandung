@@ -248,8 +248,8 @@
       const c = PL.semesterCell(sub.id, i);
       const h = c.points != null ? Math.max(8, c.points / 15 * 100) : 0;
       return `<div class="sem-bar"><div class="track">
-        ${c.points != null ? `<div class="fill ${c.kind === 'prog' ? 'prog' : ''}" data-tier="${PL.tier(c.points)}" style="height:${h}%"></div>` : ''}
-        <div class="v" style="${c.kind === 'prog' ? 'color:var(--muted)' : ''}">${c.kind === 'real' ? c.points : c.points != null ? '≈' + c.points : ''}</div></div>
+        ${c.kind === 'real' ? `<div class="fill" data-tier="${PL.tier(c.points)}" style="height:${h}%"></div>` : ''}
+        <div class="v">${c.kind === 'real' ? c.points : ''}</div></div>
         <div class="k">${esc(PL.semName(i))}</div></div>`;
     }).join('');
     return `<a class="subj-card" style="--c:${sub.color}" href="#/fach/${sub.id}">
@@ -342,9 +342,9 @@
       const cells = [0, 1, 2, 3].map((i) => {
         const c = PL.semesterCell(sub.id, i);
         const ov = PL.getOverride(sub.id, i);
-        const cls = c.kind === 'real' ? 'real' : c.kind === 'prog' ? 'prog' : 'empty-cell';
-        const label = c.kind === 'empty' ? '+' : (c.kind === 'prog' ? c.points : c.points);
-        return `<td><button class="cell ${cls} ${c.out ? 'out' : ''}" data-tier="${PL.tier(c.points)}" data-action="open-cell" data-subject="${sub.id}" data-sem="${i}" aria-label="${esc(sub.name)} ${esc(PL.semName(i))}">${label}${ov.points != null ? '<span class="ov"></span>' : ''}</button></td>`;
+        // Noch nicht ausgefüllte Halbjahre: nur graues, leeres Feld (Prognose fließt trotzdem in die Rechnung)
+        const real = c.kind === 'real';
+        return `<td><button class="cell ${real ? 'real' : 'open-cell'} ${c.out ? 'out' : ''}" ${real ? `data-tier="${PL.tier(c.points)}"` : ''} data-action="open-cell" data-subject="${sub.id}" data-sem="${i}" aria-label="${esc(sub.name)} ${esc(PL.semName(i))}${real ? '' : ' – noch keine Note'}">${real ? c.points : ''}${ov.points != null ? '<span class="ov"></span>' : ''}</button></td>`;
       }).join('');
       const a = PL.subjectAvg(sub.id);
       return `<tr>
@@ -381,7 +381,7 @@
           ${subs.length ? `<div class="table-wrap"><table class="abi-table">
             <thead><tr><th class="sub-cell">Fach</th>${head}<th>Ø</th></tr></thead>
             <tbody>${rows}</tbody></table></div>` : `<div class="empty">Noch keine Fächer angelegt.</div>`}
-          <div class="legend"><span><i class="l-real"></i>Eingetragen</span><span><i class="l-prog"></i>Prognose</span><span><i class="l-out"></i>Nicht eingebracht</span></div>
+          <div class="legend"><span><i class="l-real"></i>Eingetragen</span><span><i class="l-prog"></i>Noch offen</span><span><i class="l-out"></i>Nicht eingebracht</span></div>
           <div class="abi-foot">
             <div><div class="big-score num">${b1.points != null ? b1.points : '–'} <small>/ 600</small></div>
               <div class="hint">${b1.inCount} Kurse eingebracht · ${b1.prog} davon hochgerechnet</div></div>

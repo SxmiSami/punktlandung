@@ -558,6 +558,9 @@ textarea.input { height: auto; min-height: 80px; padding: 12px 14px; resize: ver
 [data-theme="light"] .cell.real { background: var(--tc); color: var(--tier-ink); }
 .cell.prog { border: 1.5px dashed color-mix(in srgb, var(--tc, var(--muted)) 55%, transparent); font-weight: 700; }
 .cell.empty-cell { background: var(--card-2); color: var(--muted); border: 1.5px dashed var(--line-strong); font-size: 14px; }
+.cell.open-cell { background: var(--card-2); border-color: var(--line); }
+.cell.open-cell:hover { border-color: var(--line-strong); }
+[data-theme="light"] .cell.open-cell { background: var(--card-3); }
 .cell.out { opacity: .35; text-decoration: line-through; }
 .cell .ov { position: absolute; top: 3px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; }
 @media (max-width: 600px) {
@@ -575,7 +578,7 @@ textarea.input { height: auto; min-height: 80px; padding: 12px 14px; resize: ver
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
 .legend .l-real { background: var(--t2); }
-.legend .l-prog { border: 1.5px dashed var(--t2); background: color-mix(in srgb, var(--t2) 18%, transparent); }
+.legend .l-prog { background: var(--card-2); border: 1px solid var(--line-strong); }
 .legend .l-out { background: var(--card-3); opacity: .6; }
 
 .exam-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }

@@ -3,6 +3,9 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.2.1
+- Noch nicht ausgefüllte Halbjahre sind in Block I und bei den Fächern nur grau und leer (keine Prognose-Zahlen mehr)
+
 ## 0.2.0
 - **Stundenplan** mit Wochenansicht, Doppelstunden, Räumen und A/B-Wochen
 - Stundenzeiten in den Einstellungen anpassbar
