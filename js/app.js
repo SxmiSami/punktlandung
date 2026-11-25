@@ -118,10 +118,10 @@
         file.text().then((txt) => {
           let data;
           try { data = JSON.parse(txt); } catch (e) { PL.toast('Datei konnte nicht gelesen werden'); return; }
-          if (!data || !Array.isArray(data.subjects)) { PL.toast('Das ist kein gültiges Backup'); return; }
-          PL.confirmSheet('Backup importieren?', `${data.subjects.length} Fächer und ${(data.grades || []).length} Noten ersetzen deine aktuellen Daten.`, 'Importieren', () => {
-            PL.replaceState(data); location.hash = '#/'; PL.toast('Backup importiert');
-          });
+          if (!data || !Array.isArray(data.subjects)) { PL.toast('Das ist keine gültige Punktlandung-Datei'); return; }
+          const go = () => { PL.replaceState(data); location.hash = '#/'; PL.toast(`${data.subjects.length} Fächer und ${(data.grades || []).length} Noten importiert`); };
+          if (!PL.state.subjects.length) go();
+          else PL.confirmSheet('Daten importieren?', `${data.subjects.length} Fächer und ${(data.grades || []).length} Noten ersetzen deine aktuellen Daten.`, 'Importieren', go);
         });
       };
       inp.click();

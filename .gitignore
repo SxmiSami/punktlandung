@@ -1,3 +1,5 @@
 .claude/
+# Persönliche Daten nie ins öffentliche Repo
+private/
 .DS_Store
 Thumbs.db

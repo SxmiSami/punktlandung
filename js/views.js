@@ -27,6 +27,7 @@
       <p>Trag deine Noten ein, behalte Q1 und Q2 im Blick und sieh live, auf welchen Abischnitt du zusteuerst.</p>
       <div class="welcome-actions">
         <button class="btn btn-primary" data-action="setup">${ic('sparkle')} Fächer einrichten</button>
+        <button class="btn" data-action="import">${ic('upload', 'i-sm')} Datei importieren</button>
         <button class="btn" data-action="demo">Mit Beispieldaten ausprobieren</button>
         ${PL.sync.enabled && !PL.sync.user ? `<button class="btn btn-ghost" data-action="login">Schon ein Konto? <b style="color:var(--accent-2)">Anmelden</b></button>` : ''}
       </div>
