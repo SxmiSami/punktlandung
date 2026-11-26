@@ -2,7 +2,7 @@
 window.PL = window.PL || {};
 
 /* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
-PL.VERSION = '0.3.3';
+PL.VERSION = '0.4.0';
 
 /* Standard-Stundenzeiten (in den Einstellungen änderbar) */
 PL.DEFAULT_PERIODS = [

@@ -3,6 +3,14 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.4.0
+- **Chat** mit Freunden: Einzelchats und Gruppen (z. B. „Mathe-LK“), neuer Punkt „Chat“ in der Navigation mit Zähler für ungelesene Nachrichten
+- Nachrichten kommen live an; Hinweis unten, wenn in einem anderen Chat etwas Neues ankommt
+- Über **+** im Chat einen **Lernzettel** (alle im Chat können ihn öffnen und sichern) oder einen **Klausurtermin** schicken – Freunde übernehmen ihn mit einem Tipp in ihren Kalender
+- Termine auch aus dem Termin-Fenster und Lernzettel aus „Teilen“ direkt an einen Chat senden
+- Gruppen umbenennen, Leute hinzufügen, Gruppe verlassen; eigene Nachrichten für alle löschen
+- Einmalig `supabase/chat.sql` in Supabase ausführen (siehe SYNC-EINRICHTEN.md, Schritt 6)
+
 ## 0.3.3
 - iPad/Web-App: Seitenleiste und Inhalt beginnen unter der Statusleiste und sind oben nicht mehr verschwommen
 

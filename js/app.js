@@ -14,8 +14,11 @@
     const active = r.name === 'fach' ? 'faecher' : r.name === 'termine' ? 'plan' : r.name;
     const hidden = r.name === 'setup' || !PL.state.subjects.length;
     const openTasks = PL.state.tasks.filter((t) => !t.done).length;
-    document.getElementById('sideNav').innerHTML = PL.NAV.map((n) =>
-      `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}${n.id === 'aufgaben' && openTasks ? `<span class="count">${openTasks}</span>` : ''}</a>`).join('');
+    const unread = PL.chat ? PL.chat.unread : 0;
+    const nav = PL.NAV.filter((n) => n.id !== 'chat' || (PL.chat && PL.chat.available()));
+    const count = (n) => (n.id === 'aufgaben' && openTasks ? `<span class="count">${openTasks}</span>` : n.id === 'chat' && unread ? `<span class="count badge">${unread > 99 ? '99+' : unread}</span>` : '');
+    document.getElementById('sideNav').innerHTML = nav.map((n) =>
+      `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}${count(n)}</a>`).join('');
     const ver = document.getElementById('sideVersion');
     if (ver) ver.textContent = 'Version ' + PL.VERSION;
     document.querySelectorAll('[data-nav="einstellungen"]').forEach((a) => a.classList.toggle('active', active === 'einstellungen'));
@@ -23,19 +26,22 @@
     if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
-    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.tab || n.label}</span>${n.id === 'aufgaben' && openTasks ? `<i class="tab-badge">${openTasks}</i>` : ''}</a>`;
-    tb.innerHTML = PL.NAV.map(tab).join('');
+    const badge = (n) => { const v = n.id === 'aufgaben' ? openTasks : n.id === 'chat' ? unread : 0; return v ? `<i class="tab-badge">${v > 99 ? '99+' : v}</i>` : ''; };
+    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.tab || n.label}</span>${badge(n)}</a>`;
+    tb.innerHTML = nav.map(tab).join('');
+    tb.dataset.n = nav.length;
     // Schwebender +-Knopf: passt sich der aktuellen Seite an
     const fab = document.getElementById('fab');
     const fabAction = r.name === 'aufgaben' ? ['add-task', 'Aufgabe hinzufügen']
       : r.name === 'lernzettel' ? ['add-note', 'Lernzettel hochladen']
+      : r.name === 'chat' ? ['new-chat', 'Neuer Chat']
       : (r.name === 'plan' && PL.ui.planMode === 'week') ? ['add-lesson', 'Stunde eintragen']
       : (r.name === 'termine' || r.name === 'plan') ? ['add-event', 'Termin hinzufügen']
       : ['add-grade', 'Note eintragen'];
     fab.dataset.action = fabAction[0];
     fab.setAttribute('aria-label', fabAction[1]);
     fab.title = fabAction[1];
-    fab.hidden = hidden || r.name === 'einstellungen';
+    fab.hidden = hidden || r.name === 'einstellungen' || (r.name === 'chat' && (!!r.arg || !PL.sync.user));
   }
 
   function render() {
@@ -45,8 +51,11 @@
     const y = window.scrollY;
     PL.applyTheme();
 
+    // Chat: nur Liste und Nachrichten austauschen, damit das Eingabefeld erhalten bleibt
+    if (r.name === 'chat' && !changed && PL.chatPatch && PL.chatPatch(r.arg)) { renderNav(r); return; }
+
     let html;
-    if (!PL.state.subjects.length && r.name !== 'setup' && r.name !== 'einstellungen') html = PL.views.welcome();
+    if (!PL.state.subjects.length && r.name !== 'setup' && r.name !== 'einstellungen' && r.name !== 'chat') html = PL.views.welcome();
     else switch (r.name) {
       case 'faecher': html = PL.views.subjects(); break;
       case 'fach':
@@ -57,6 +66,7 @@
       case 'plan': html = PL.views.plan(); break;
       case 'aufgaben': html = PL.views.tasks(); break;
       case 'lernzettel': html = PL.views.notes(); break;
+      case 'chat': html = PL.views.chat(r.arg); break;
       case 'einstellungen': html = PL.views.settings(); break;
       case 'setup': html = PL.views.setup(); break;
       default: html = PL.views.dashboard();
@@ -66,6 +76,7 @@
     renderNav(r);
     if (changed) { window.scrollTo(0, 0); lastRoute = key; }
     else { main.querySelectorAll('.view').forEach((v) => (v.style.animation = 'none')); window.scrollTo(0, y); }
+    if (r.name === 'chat' && PL.chatMounted) PL.chatMounted(r.arg);
     // Titel bleibt immer „Punktlandung“: Safari nimmt ihn beim „Zum Home-Bildschirm“ als App-Namen
     document.title = 'Punktlandung';
   }

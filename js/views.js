@@ -10,6 +10,7 @@
     { id: 'plan', label: 'Kalender', icon: 'calendar' },
     { id: 'aufgaben', label: 'Aufgaben', icon: 'tasks' },
     { id: 'lernzettel', label: 'Lernzettel', tab: 'Zettel', icon: 'file' },
+    { id: 'chat', label: 'Chat', icon: 'chat' },
     { id: 'abitur', label: 'Abitur', icon: 'cap' },
   ];
 

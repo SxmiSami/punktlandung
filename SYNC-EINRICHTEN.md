@@ -48,6 +48,16 @@ Damit Lernzettel online gespeichert und geteilt werden können:
 Das legt den privaten Speicher „lernzettel“ an, begrenzt ihn auf **250 MB pro Person** und **25 MB pro Datei** und erlaubt das Teilen mit Freunden per E-Mail-Adresse.
 Der kostenlose Plan hat **1 GB für alle zusammen**, also bei 4 Personen je 250 MB. Wer mehr braucht, kann einzelne Zettel „nur lokal“ speichern.
 
+## 6. Chat einrichten
+
+Damit ihr euch in der App schreiben könnt (einzeln oder in Gruppen):
+
+1. Links auf **„SQL Editor“** klicken, **„New query“**.
+2. Den kompletten Inhalt der Datei [`supabase/chat.sql`](supabase/chat.sql) einfügen.
+3. Auf **„Run“** klicken. Es sollte „Success. No rows returned“ erscheinen.
+
+Das legt die Tabellen für Chats und Nachrichten an. Nachrichten sieht nur, wer im Chat ist. Lernzettel, die in einen Chat geschickt werden, dürfen alle im Chat öffnen. Neue Nachrichten kommen sofort an (Supabase Realtime); falls Realtime nicht geht, holt die App sie alle 20 Sekunden.
+
 ## Danach
 
 In der App unter **Einstellungen → Konto & Synchronisierung** ein Konto erstellen. Auf jedem weiteren Gerät einfach mit derselben E-Mail anmelden.

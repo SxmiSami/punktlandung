@@ -424,6 +424,8 @@
           <div style="display:flex;gap:8px"><input id="shEmail" class="input" type="email" inputmode="email" autocomplete="off" placeholder="name@beispiel.de" style="flex:1" autofocus>
           <button type="submit" class="btn btn-primary" data-go>Teilen</button></div></form>
         ${friends.length ? `<div class="chips" style="margin:-6px 0 14px;flex-wrap:wrap">${friends.map((e) => `<button type="button" class="chip" data-friend="${esc(e)}">${ic('plus', 'i-sm')} ${esc(e)}</button>`).join('')}</div>` : ''}
+        ${PL.chat && PL.chat.chats.length ? `<div class="field-label" style="margin:0 0 8px">Oder in einen Chat schicken</div>
+        <div class="chips" style="flex-wrap:wrap;overflow:visible;margin-bottom:14px">${PL.chat.chats.map((c) => `<button type="button" class="chip" data-chat-to="${c.id}">${ic('chat', 'i-sm')} ${esc(PL.chat.title(c))}</button>`).join('')}</div>` : ''}
         <div class="auth-msg" data-msg hidden></div>
         <p class="hint" style="margin:0 0 14px">Deine Freunde brauchen ein Konto in Punktlandung. Geteilte Zettel zählen nur bei dir zum Speicher – sie können ihn ansehen und auf ihrem Gerät speichern.</p>
         <div class="sheet-foot"><button type="button" class="btn" data-back>Fertig</button></div>`;
@@ -449,6 +451,14 @@
         const form = sh.querySelector('[data-form]');
         if (form) form.onsubmit = (e) => { e.preventDefault(); send(sh.querySelector('#shEmail').value); };
         sh.querySelectorAll('[data-friend]').forEach((b) => { b.onclick = () => send(b.dataset.friend); });
+        sh.querySelectorAll('[data-chat-to]').forEach((b) => {
+          b.onclick = async () => {
+            b.disabled = true; show('');
+            const c = PL.chat.chat(b.dataset.chatTo);
+            try { await PL.chat.sendNote(b.dataset.chatTo, note); PL.toast(`An ${c ? PL.chat.title(c) : 'den Chat'} gesendet`); b.innerHTML = `${ic('check', 'i-sm')} ${esc(c ? PL.chat.title(c) : 'Chat')}`; }
+            catch (e) { show(PL.chat.err(e)); b.disabled = false; }
+          };
+        });
         sh.querySelectorAll('[data-unshare]').forEach((b) => {
           b.onclick = async () => {
             b.disabled = true;

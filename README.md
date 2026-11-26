@@ -8,6 +8,7 @@ Eine Noten-App fürs Abitur, die am PC und auf dem Handy läuft (als installierb
 - **Kalender:** Stundenplan mit Doppelstunden und A/B-Wochen, dazu Klausuren und Tests mit Countdown
 - **Aufgaben:** Hausaufgaben mit Fälligkeit (z. B. „bis zur nächsten Stunde“) zum Abhaken
 - **Lernzettel:** Fotos und PDFs pro Fach – in der Cloud, nur auf dem Gerät oder beides, mit Speicheranzeige und Teilen mit Freunden
+- **Chat:** Einzel- und Gruppenchats mit Freunden, die ein Konto haben – Nachrichten kommen live an, Lernzettel und Klausurtermine lassen sich direkt in den Chat schicken
 - Hell- und Dunkelmodus, funktioniert offline, Backup als JSON-Datei (Export/Import)
 
 ## Rechenregeln
@@ -31,6 +32,8 @@ Auf dem Handy die Seite öffnen und **„Zum Home-Bildschirm“** (iPhone, Safar
 ## Daten
 
 Die Daten werden immer lokal im Browser gespeichert (funktioniert auch offline). Mit einem **Konto** (Einstellungen → Konto & Synchronisierung) werden sie zusätzlich über Supabase auf allen Geräten synchronisiert. Die einmalige Einrichtung steht in [SYNC-EINRICHTEN.md](SYNC-EINRICHTEN.md).
+
+Der **Chat** liegt nur online (Tabellen aus `supabase/chat.sql`) und ist nicht im Backup enthalten.
 
 Ohne Konto kannst du Daten über **Einstellungen → Backup exportieren / importieren** übertragen.
 

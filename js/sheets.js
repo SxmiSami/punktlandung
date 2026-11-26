@@ -105,6 +105,7 @@
         <div class="color-pick">${PL.COLORS.map((c) => `<button type="button" class="${c === f.color ? 'on' : ''}" style="--c:${c}" data-c="${c}" aria-label="Farbe ${c}"></button>`).join('')}</div></div>
       <div class="sheet-foot">
         ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
+        ${ex && PL.chat && PL.chat.available() ? `<button type="button" class="btn" data-chat style="flex:0 0 auto" title="An einen Chat senden" aria-label="An einen Chat senden">${ic('chat', 'i-sm')}</button>` : ''}
         <button type="button" class="btn btn-primary" data-save>${ic('check', 'i-sm')} Speichern</button>
       </div>`;
     PL.openSheet(html, {
@@ -206,6 +207,7 @@
       </div>
       <div class="sheet-foot">
         ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
+        ${ex && PL.chat && PL.chat.available() ? `<button type="button" class="btn" data-chat style="flex:0 0 auto" title="An einen Chat senden" aria-label="An einen Chat senden">${ic('chat', 'i-sm')}</button>` : ''}
         <button type="button" class="btn btn-primary" data-save>${ic('check', 'i-sm')} Speichern</button>
       </div>`;
     PL.openSheet(html, {
@@ -222,6 +224,8 @@
         };
         const del = sh.querySelector('[data-del]');
         if (del) del.onclick = () => { const ev = PL.deleteEvent(ex.id); PL.closeSheet(); PL.toast('Termin gelöscht', () => PL.upsertEvent(ev)); };
+        const toChat = sh.querySelector('[data-chat]');
+        if (toChat) toChat.onclick = () => PL.chatPickSheet('Termin senden', `${ex.title || ex.type} · ${PL.fmtDate(ex.date)}`, (cid) => PL.chat.sendEvent(cid, ex));
       },
     });
   };
