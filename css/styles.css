@@ -796,12 +796,72 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
 .lesson-row.live { background: color-mix(in srgb, var(--c) 14%, transparent); }
 .tag-live { background: var(--t1); color: var(--tier-ink); }
 .tag-off { background: var(--danger); color: #fff; }
-.lesson-row.cancelled .row-title { text-decoration: line-through; text-decoration-color: var(--danger); }
-.lesson-row.cancelled .lr-bar { background: repeating-linear-gradient(180deg, var(--c) 0 4px, transparent 4px 8px); }
-.lesson-row .room-new, .tt-block .room-new { color: var(--t4); font-weight: 800; }
-.tt-block.cancelled { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, var(--card)) 0 6px, var(--card) 6px 12px); border-left-style: dashed; }
-.tt-block.cancelled b { text-decoration: line-through; text-decoration-color: var(--danger); opacity: .7; }
-.tt-block em.off { color: var(--danger); }
+/* ---------- Status aus Untis: Entfall rot · Raum grün · EVA grün gestrichelt · Klausur gelb ---------- */
+:root { --st-off: #EF4444; --st-ok: #22C55E; --st-exam: #EAB308; }
+.tag-off { background: var(--st-off); color: #fff; }
+.tag-eva { background: var(--st-ok); color: #fff; }
+.tag-exam { background: var(--st-exam); color: #1a1400; }
+.tag-hw { background: var(--accent-soft); color: var(--accent-2); display: inline-flex; align-items: center; gap: 3px; }
+button.lesson-row { width: 100%; text-align: left; }
+.lesson-row.st-off .row-title { text-decoration: line-through; text-decoration-color: var(--st-off); }
+.lesson-row.st-off .lr-bar { background: var(--st-off); }
+.lesson-row.st-eva .lr-bar { background: repeating-linear-gradient(180deg, var(--st-ok) 0 4px, transparent 4px 8px); }
+.lesson-row.st-exam .lr-bar { background: var(--st-exam); }
+.room-new, .tch-new { color: var(--st-ok); font-weight: 800; }
+.tch-off { text-decoration: line-through; text-decoration-color: currentColor; opacity: .85; }
+.lesson-row s, .tt-block s { opacity: .6; }
+
+.tt { grid-template-columns: 40px repeat(10, minmax(0, 1fr)); }
+@media (min-width: 720px) { .tt { grid-template-columns: 56px repeat(10, minmax(0, 1fr)); } }
+.tt-cell { border-radius: 11px; border: 1px dashed color-mix(in srgb, var(--line) 60%, transparent); }
+.tt-block .rm, .tt-block .tch { font-size: 11px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 720px) { .tt-block .rm, .tt-block .tch { font-size: 12px; } }
+.tt-block > * { flex-shrink: 0; }
+.tt-block b, .tt-block em, .tt-block .rm, .tt-block .tch { max-width: 100%; }
+.tt-block .hw { position: absolute; right: 5px; bottom: 4px; font-style: normal; display: inline-flex; align-items: center; gap: 1px; font-size: 10px; font-weight: 800; color: var(--accent-2); }
+.tt-block.half { padding: 5px 5px; }
+.tt-block.half b { font-size: 12.5px; }
+.tt-block.st-off { --c: var(--st-off); background: color-mix(in srgb, var(--st-off) 22%, var(--card)); border-left-color: var(--st-off); }
+.tt-block.st-off b { text-decoration: line-through; color: color-mix(in srgb, var(--st-off) 60%, var(--text)); }
+.tt-block.st-off em { color: var(--st-off); }
+.tt-block.st-chg { --c: var(--st-ok); background: color-mix(in srgb, var(--st-ok) 24%, var(--card)); border-left-color: var(--st-ok); }
+.tt-block.st-chg b { color: color-mix(in srgb, var(--st-ok) 55%, var(--text)); }
+[data-theme="light"] .tt-block.st-chg { background: color-mix(in srgb, var(--st-ok) 16%, #fff); }
+.tag-chg { background: var(--st-ok); color: #fff; }
+.tt-block.st-chg em { color: var(--st-ok); }
+.lesson-row.st-chg .lr-bar { background: var(--st-ok); }
+.tt-block.st-eva { --c: var(--st-ok); background: color-mix(in srgb, var(--st-ok) 16%, var(--card)); border: 1.5px dashed var(--st-ok); border-left-width: 3px; }
+.tt-block.st-eva b { color: color-mix(in srgb, var(--st-ok) 60%, var(--text)); }
+.tt-block.st-eva em { color: var(--st-ok); }
+.tt-block.st-exam { --c: var(--st-exam); background: color-mix(in srgb, var(--st-exam) 26%, var(--card)); border-left-color: var(--st-exam); }
+.tt-block.st-exam b { color: color-mix(in srgb, var(--st-exam) 55%, var(--text)); }
+.tt-block.st-exam em { color: var(--st-exam); }
+[data-theme="light"] .tt-block.st-off { background: color-mix(in srgb, var(--st-off) 14%, #fff); }
+[data-theme="light"] .tt-block.st-eva { background: color-mix(in srgb, var(--st-ok) 10%, #fff); }
+[data-theme="light"] .tt-block.st-exam { background: color-mix(in srgb, var(--st-exam) 22%, #fff); }
+[data-theme="light"] .tt-block.st-exam em { color: #A16207; }
+.tt-block.editing .ed { position: absolute; right: 5px; bottom: 4px; color: var(--muted); opacity: .8; }
+.tt-card.is-edit { box-shadow: 0 0 0 2px var(--accent-soft); }
+.edit-banner { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--accent-2); background: var(--accent-soft); padding: 8px 12px; border-radius: 12px; margin-bottom: 10px; }
+.plan-edit-btn { margin-left: auto; }
+.tt-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 4px 0; font-size: 12px; font-weight: 700; color: var(--text-2); }
+.tt-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+.tt-legend .lg::before { content: ''; width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.tt-legend .off::before { background: var(--st-off); }
+.tt-legend .moved::before { background: var(--st-ok); }
+.tt-legend .eva::before { border: 2px dashed var(--st-ok); }
+.tt-legend .exam::before { background: var(--st-exam); }
+.tt-legend .hw::before { display: none; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.info-grid > div { padding: 10px 12px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); }
+.info-grid .hint { display: block; margin-bottom: 2px; }
+.info-row { display: flex; gap: 10px; align-items: baseline; padding: 10px 12px; border-radius: 12px; margin-bottom: 8px; background: var(--card-2); border-left: 4px solid var(--line-strong); }
+.info-row b { flex: none; }
+.info-row span { color: var(--text-2); }
+.info-row.off { border-left-color: var(--st-off); }
+.info-row.eva { border-left-color: var(--st-ok); border-left-style: dashed; }
+.info-row.moved { border-left-color: var(--st-ok); }
+.info-row.exam { border-left-color: var(--st-exam); }
 
 /* ---------- Hausaufgaben ---------- */
 .tasks { display: flex; flex-direction: column; gap: 2px; }
@@ -1118,3 +1178,6 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
 .qr-msg.bad { color: var(--danger); }
 .qr-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .qr-scan .btn-ghost { color: #E6E8F0; }
+
+.hw-compare { padding: 12px 14px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--line); margin-bottom: 10px; }
+.hw-text { font-weight: 700; margin: 4px 0; }

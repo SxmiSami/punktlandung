@@ -25,6 +25,9 @@
     noteMode: 'both',       // Lernzettel: both | cloud | local
     compressPhotos: true,   // Fotos beim Hochladen verkleinern
     untisMap: {},           // Untis-Fach (Kürzel) → Fach-ID oder 'skip'
+    untisExams: true,       // Klausuren aus Untis als Termine übernehmen
+    untisHomework: true,    // Hausaufgaben aus Untis übernehmen
+    untisSeen: [],          // schon übernommene Untis-Einträge (gelöschte kommen nicht wieder)
   });
 
   PL.emptyState = () => ({

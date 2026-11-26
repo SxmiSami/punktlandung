@@ -3,6 +3,25 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.7.0
+- **Kalender mit Ansicht- und Bearbeiten-Modus**: Normal siehst du die Woche mit allen Änderungen und tippst eine Stunde für Details an (Raum, Lehrkraft, Klausur, fällige Hausaufgaben). Über „Bearbeiten“ änderst du den festen Stundenplan, mit „Fertig“ geht es zurück
+- Farben wie in Untis: **Entfall rot**, **Raum- und Lehreränderung grün**, **EVA grün gestrichelt** mit durchgestrichenem Lehrerkürzel, **Klausuren gelb**
+- Fällt eine Stunde für eine Klausur aus, stehen beide nebeneinander (Klausur links, ausfallende Stunde rechts)
+- Ändert sich nur eine Stunde einer Doppelstunde, wird sie geteilt angezeigt
+- Lehrerkürzel aus Untis, Vertretungen mit neuem und durchgestrichenem altem Kürzel
+- Zusätzliche Termine aus Untis (z. B. Stufenversammlung) erscheinen im Kalender
+- Fällige Hausaufgaben sind an der Stunde markiert
+- Hausaufgabe aus Untis, aber du hast selbst schon eine eingetragen? Die App fragt, welche stimmt: Untis-Version, deine oder beide
+- Legende unter dem Kalender
+- Die Supabase-Funktion `untis` muss dafür einmal neu eingefügt werden (SYNC-EINRICHTEN.md, Schritt 7)
+
+## 0.6.0
+- **Klausuren aus Untis** landen automatisch bei den Terminen (mit Countdown); verschiebt Untis eine Klausur, zieht der Termin mit
+- **Hausaufgaben aus Untis** landen automatisch bei den Aufgaben
+- Beides lässt sich unter Einstellungen → Stundenplan einzeln ausschalten; was du löschst, kommt nicht wieder
+- **EVA** (eigenverantwortliches Arbeiten) wird im Stundenplan und in der Übersicht angezeigt, dazu Hinweise aus Untis
+- Die Supabase-Funktion `untis` muss dafür einmal neu eingefügt werden (SYNC-EINRICHTEN.md, Schritt 7)
+
 ## 0.5.2
 - Untis-Import zuverlässiger: Der feste Stundenplan wird aus sechs Wochen nach Mehrheit erkannt – Klausuren, Vertretungen und Wochen mit vielen Änderungen bringen ihn nicht mehr durcheinander (z. B. fehlte vorher eine Stunde oder wurde fälschlich als A/B-Stunde eingetragen)
 - Im Untis-Fenster steht, welche Stunden nicht übernommen wurden und warum

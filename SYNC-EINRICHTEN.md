@@ -72,6 +72,8 @@ Alternativ mit dem Terminal: `npx supabase functions deploy untis --no-verify-jw
 
 In der App dann unter **Einstellungen → Stundenplan → Untis** auf **„Verbinden“** tippen. Am einfachsten geht das mit dem Link aus WebUntis: **Profil → Freigaben → Zugriff über Untis Mobile → Anzeigen**.
 
+**Nach einem App-Update, das die Funktion ändert** (steht dann im CHANGELOG): In Supabase unter **Edge Functions → untis → Code** den Inhalt wieder durch die aktuelle [`supabase/functions/untis/index.ts`](supabase/functions/untis/index.ts) ersetzen und **„Deploy“** klicken. „Verify JWT“ bleibt aus.
+
 > Die Untis-Zugangsdaten bleiben nur auf deinem Gerät. Die Funktion bekommt sie bei jedem Abruf mitgeschickt, gibt sie an WebUntis weiter und speichert sie nicht. Sie spricht nur mit Adressen, die auf `.webuntis.com` enden.
 
 ## Danach

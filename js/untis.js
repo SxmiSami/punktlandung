@@ -21,7 +21,7 @@
   const tokens = (s) => String(s || '').toLowerCase().split(/[^a-z0-9äöüß]+/i).filter(Boolean).map(norm);
 
   /* ---------- Abruf ---------- */
-  U.fetch = async function (creds, from, to) {
+  U.fetch = async function (creds, from, to, more) {
     const cfg = window.PL_CONFIG || {};
     if (!cfg.supabaseUrl) throw new Error('Die Online-Verbindung ist nicht eingerichtet.');
     let res;
@@ -29,7 +29,7 @@
       res = await fetch(`${cfg.supabaseUrl}/functions/v1/untis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey, Authorization: 'Bearer ' + cfg.supabaseAnonKey },
-        body: JSON.stringify(Object.assign({}, creds, { from, to })),
+        body: JSON.stringify(Object.assign({}, creds, { from, to }, more || {})),
       });
     } catch (e) {
       // Ohne eingerichtete Funktion scheitert schon die Vorab-Anfrage des Browsers (CORS)
@@ -181,21 +181,84 @@
     }).filter(Boolean);
   };
 
-  /* Wird von PL.blocksOn aufgerufen: markiert Blöcke als „Entfällt“ usw. */
+  const EVA_RE = /\bEVA\b|eigenverantwortlich|selbstlern|selbststudium/i;
+  const EXAM_RE = /klausur|prüfung|pruefung|\bexam/i;
+  const overlap = (x, y) => x.from <= y.to && y.from <= x.to;
+
+  /* Wird von PL.blocksOn aufgerufen: Entfall, EVA, Raum- und Lehreränderung */
   U.annotate = function (date, blocks) {
     if (!U.connected()) return blocks;
     const info = U.dayInfo(PL.isoDate(date));
     if (!info) return blocks;
+    // Doppelstunde, bei der nur eine Stunde ausfällt/anders ist → aufteilen
+    const sig = (b, p) => info.filter((l) => l.subjectId === b.subjectId && l.from <= p && p <= l.to)
+      .map((l) => [l.code, l.rooms[0], l.info, l.teachers[0]].join('|')).sort().join(';');
+    const split = [];
     blocks.forEach((b) => {
-      const hits = info.filter((l) => l.subjectId === b.subjectId && l.from <= b.to && b.from <= l.to);
+      let cur = null;
+      for (let p = b.from; p <= b.to; p++) {
+        const g = sig(b, p);
+        if (cur && cur.g === g) { cur.b.to = p; cur.b.ids.push(b.ids[p - b.from]); continue; }
+        const nb = Object.assign({}, b, { from: p, to: p, ids: [b.ids[p - b.from]].filter(Boolean), allIds: b.allIds || b.ids.slice() });
+        cur = { g, b: nb }; split.push(nb);
+      }
+    });
+    split.forEach((b) => { b.start = PL.period(b.from).start; b.end = PL.period(b.to).end; });
+    blocks = split;
+    blocks.forEach((b) => {
+      const hits = info.filter((l) => l.subjectId === b.subjectId && overlap(l, b));
       if (!hits.length) return;
-      if (hits.every((l) => l.code === 'cancelled')) b.cancelled = true;
-      const moved = hits.find((l) => l.code !== 'cancelled' && l.rooms[0] && l.origRooms.length && l.rooms[0] !== l.origRooms[0]);
+      const live = hits.filter((l) => l.code !== 'cancelled');
+      const txt = hits.map((l) => l.info).filter(Boolean);
+      if (EVA_RE.test(txt.join(' '))) b.eva = true;
+      else if (!live.length) b.cancelled = true;
+      if (hits.some((l) => l.type === 'ex')) b.exam = true;
+      const moved = live.find((l) => l.rooms[0] && l.origRooms.length && l.rooms[0] !== l.origRooms[0]);
       if (moved) b.newRoom = moved.rooms[0];
-      const txt = hits.map((l) => l.info).filter(Boolean)[0];
-      if (txt) b.info = txt;
+      const t = live[0] || hits[0];
+      b.teacher = t.teachers[0] || '';
+      b.origTeacher = t.origTeachers[0] || '';
+      if (b.eva && !b.origTeacher) { b.origTeacher = b.teacher; b.teacher = ''; }
+      if (txt.length) b.info = txt[0];
     });
     return blocks;
+  };
+
+  /* Was Untis an diesem Tag zusätzlich hat: Klausuren, Vertretungen in anderen
+     Fächern, Veranstaltungen. Klausuren im eigenen Fach färben den Block. */
+  U.extrasOn = function (date, blocks) {
+    if (!U.connected()) return [];
+    const iso = PL.isoDate(date);
+    const info = U.dayInfo(iso);
+    const out = [];
+    (info || []).forEach((l) => {
+      if (l.code === 'cancelled') return;
+      if (blocks.some((b) => b.subjectId && l.subjectId === b.subjectId && overlap(l, b))) return;
+      const label = l.subjects[0] ? l.subjects[0].name : (l.info || 'Termin');
+      const it = {
+        subjectId: l.subjectId, label, from: l.from, to: l.to, room: l.rooms[0] || '',
+        teacher: l.teachers[0] || '', origTeacher: l.origTeachers[0] || '',
+        exam: l.type === 'ex' || EXAM_RE.test(l.info), eva: EVA_RE.test(l.info),
+        info: l.subjects[0] ? l.info : '',
+      };
+      // direkt aufeinanderfolgende Einträge (z. B. Klausur über zwei Stunden) zusammenfassen
+      const prev = out.find((o) => o.label === it.label && o.room === it.room && o.to === it.from - 1 && o.exam === it.exam);
+      if (prev) { prev.to = it.to; return; }
+      out.push(it);
+    });
+    const c = cache();
+    (c.exams || []).filter((x) => x.date === iso && x.start).forEach((x) => {
+      const m = U.matchSubject({ name: x.subject, long: '' });
+      const sid = m && m !== 'skip' ? m : null;
+      const r = U.periodRange(x.start, x.end || x.start, st().settings.periods);
+      if (!r) return;
+      const name = [x.name, x.text].filter(Boolean).join(' – ');
+      const hit = out.find((o) => (sid ? o.subjectId === sid : o.label === x.subject) && overlap(o, r))
+        || blocks.find((b) => sid && b.subjectId === sid && overlap(b, r));
+      if (hit) { hit.exam = true; hit.examName = name; if (hit.cancelled) hit.cancelled = false; return; }
+      out.push({ subjectId: sid, label: x.subject || 'Klausur', from: r.from, to: r.to, room: x.rooms && x.rooms[0] || '', teacher: '', origTeacher: '', exam: true, examName: name, info: '' });
+    });
+    return out;
   };
 
   /* Aktuelle und nächste Woche (oder eine bestimmte) nachladen */
@@ -212,8 +275,12 @@
     if (!opts.force && failed[from] && Date.now() - failed[from] < 5 * 60e3) return;
     inflight = (async () => {
       try {
-        const data = await U.fetch(creds, from, to);
+        const s = st().settings;
+        const wantExtras = !opts.monday && (s.untisExams !== false || s.untisHomework !== false);
+        const data = await U.fetch(creds, from, to, wantExtras ? { extras: { from: PL.isoDate(PL.addDays(new Date(), -14)), to: PL.isoDate(PL.addDays(new Date(), 90)) } } : null);
+        if (wantExtras) U.applyExtras(data);
         const next = cache();
+        if (wantExtras && Array.isArray(data.exams)) next.exams = data.exams;
         next.days = next.days || {};
         for (let d = PL.parseDate(from); PL.isoDate(d) <= to; d = PL.addDays(d, 1)) next.days[PL.isoDate(d)] = [];
         data.lessons.forEach((l) => (next.days[l.date] = next.days[l.date] || []).push(l));
@@ -235,6 +302,104 @@
     })();
     return inflight;
   };
+  /* ---------- Klausuren → Termine, Hausaufgaben → Aufgaben ---------- */
+  /* Was einmal übernommen wurde, wird gemerkt – gelöschte Einträge kommen so nicht wieder. */
+  U.applyExtras = function (data) {
+    const S = st(), set = S.settings;
+    const seen = new Set(set.untisSeen || []);
+    const today = PL.today();
+    let changed = false, newExams = 0, newTasks = 0;
+    const sid = (name) => { const m = name ? U.matchSubject({ name, long: '' }) : null; return m && m !== 'skip' ? m : null; };
+
+    if (set.untisExams !== false && Array.isArray(data.exams)) {
+      data.exams.forEach((x) => {
+        const subjectId = sid(x.subject);
+        if (!subjectId || !x.date) return;
+        const key = 'x' + x.id;
+        const type = /test|lk|lernkontrolle|kurzarbeit/i.test(x.type + ' ' + x.name) && !/klausur/i.test(x.type + ' ' + x.name) ? 'Test' : 'Klausur';
+        const title = [x.name, x.text].filter(Boolean).join(' – ').slice(0, 120);
+        const ev = S.events.find((e) => e.untisId === key);
+        if (ev) {
+          if (ev.date !== x.date) { ev.date = x.date; changed = true; }
+          return;
+        }
+        if (seen.has(key) || x.date < today) return;
+        seen.add(key); changed = true;
+        // schon selbst eingetragen? Dann nur verknüpfen
+        const same = S.events.find((e) => !e.untisId && e.subjectId === subjectId && e.date === x.date);
+        if (same) { same.untisId = key; return; }
+        S.events.push({ id: PL.uid(), subjectId, date: x.date, type, title: title || type, untisId: key });
+        newExams++;
+      });
+    }
+    if (set.untisHomework !== false && Array.isArray(data.homework)) {
+      data.homework.forEach((h) => {
+        const subjectId = sid(h.subject);
+        if (!subjectId || !h.text) return;
+        const key = 'h' + h.id;
+        const t = S.tasks.find((x) => x.untisId === key);
+        if (t) {
+          if (h.due && t.due !== h.due && !t.done) { t.due = h.due; changed = true; }
+          return;
+        }
+        if (seen.has(key) || h.done || (h.due && h.due < today)) return;
+        // selbst schon etwas für dieses Fach um den Termin eingetragen? → nachfragen
+        const days = (x) => (x ? PL.parseDate(x).getTime() / DAY_MS : 0);
+        const mine = S.tasks.find((t) => !t.untisId && !t.done && t.subjectId === subjectId && t.due && h.due && Math.abs(days(t.due) - days(h.due)) <= 2);
+        if (mine) {
+          if (!U.conflicts.some((c) => c.key === key)) U.conflicts.push({ key, taskId: mine.id, subjectId, text: h.text.slice(0, 200), due: h.due || '' });
+          return;
+        }
+        seen.add(key); changed = true;
+        S.tasks.push({ id: PL.uid(), subjectId, title: h.text.slice(0, 200), due: h.due || '', important: false, done: false, untisId: key });
+        newTasks++;
+      });
+    }
+    if (U.conflicts.length) setTimeout(U.showConflict, 600);
+    if (!changed) return;
+    set.untisSeen = [...seen].slice(-600);
+    PL.save();
+    const parts = [newExams && `${newExams} Klausur${newExams === 1 ? '' : 'en'}`, newTasks && `${newTasks} Hausaufgabe${newTasks === 1 ? '' : 'n'}`].filter(Boolean);
+    if (parts.length) PL.toast(`Neu aus Untis: ${parts.join(' und ')}`);
+  };
+
+  /* Untis-Hausaufgabe trifft auf eine eigene Eintragung: Was stimmt? */
+  U.conflicts = [];
+  U.showConflict = function () {
+    const S = st();
+    while (U.conflicts.length && !S.tasks.some((t) => t.id === U.conflicts[0].taskId && !t.done)) U.conflicts.shift();
+    const c = U.conflicts[0];
+    if (!c) return;
+    // nicht mitten in ein anderes Fenster hinein
+    if (!document.getElementById('sheetLayer').hidden) { setTimeout(U.showConflict, 1500); return; }
+    const mine = S.tasks.find((t) => t.id === c.taskId);
+    const sub = PL.subject(c.subjectId);
+    const done = (how) => {
+      const seen = new Set(S.settings.untisSeen || []);
+      seen.add(c.key);
+      S.settings.untisSeen = [...seen].slice(-600);
+      U.conflicts.shift();
+      if (how === 'untis') { mine.title = c.text; if (c.due) mine.due = c.due; mine.untisId = c.key; }
+      if (how === 'both') S.tasks.push({ id: PL.uid(), subjectId: c.subjectId, title: c.text, due: c.due, important: false, done: false, untisId: c.key });
+      PL.save();
+      PL.closeSheet();
+      PL.toast(how === 'untis' ? 'Untis-Eintrag übernommen' : how === 'both' ? 'Beide behalten' : 'Deine Eintragung bleibt');
+      if (U.conflicts.length) setTimeout(U.showConflict, 400);
+    };
+    const card = (title, text, due) => `<div class="hw-compare"><div class="hint" style="font-weight:700">${title}</div><div class="hw-text">${esc(text)}</div><div class="hint">${due ? 'Bis ' + esc(PL.fmtDate(due)) : 'Ohne Datum'}</div></div>`;
+    PL.openSheet(`
+      ${PL.sheetHead('Hausaufgabe prüfen', `${sub ? esc(sub.name) + ' · ' : ''}In Untis steht eine Hausaufgabe, du hast selbst schon eine eingetragen.`)}
+      ${card('In Untis', c.text, c.due)}
+      ${card('Deine Eintragung', mine.title, mine.due)}
+      <div class="sheet-foot col" style="margin-top:14px">
+        <button type="button" class="btn btn-primary" data-hw="untis">Untis-Version übernehmen</button>
+        <button type="button" class="btn" data-hw="mine">Meine behalten</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-hw="both">Beide behalten (sind verschiedene Aufgaben)</button>
+      </div>`, {
+      onMount(sh) { sh.querySelectorAll('[data-hw]').forEach((b) => { b.onclick = () => done(b.dataset.hw); }); },
+    });
+  };
+
   /* Kalender zeigt eine Woche, die noch nicht geladen ist → nachladen */
   U.ensureWeek = function (monday) {
     if (!U.connected()) return;
@@ -420,6 +585,7 @@
     write(CACHE, c);
     U.error = null;
     PL.save();
+    setTimeout(() => U.refresh({ force: true }), 300);
     PL.closeSheet();
     location.hash = '#/plan';
     PL.toast(`${S.lessons.length} Stunden aus Untis übernommen${created.length ? ` · ${created.length} neue Fächer` : ''}`, () => {
@@ -544,7 +710,11 @@
     const at = cache().fetchedAt;
     const when = at ? new Date(at).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'noch nie';
     return `<div class="opt-row"><div><div class="t">Untis</div><div class="d">${esc(c.school)} · ${esc(c.user)}<br>${U.error ? `<span style="color:var(--danger)">${esc(U.error)}</span>` : `Zuletzt abgerufen: ${when}`}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-sm" data-action="untis-connect">${ic('refresh', 'i-sm')} Neu übernehmen</button><button class="btn btn-sm btn-ghost" data-action="untis-disconnect">Trennen</button></div></div>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-sm" data-action="untis-connect">${ic('refresh', 'i-sm')} Neu übernehmen</button><button class="btn btn-sm btn-ghost" data-action="untis-disconnect">Trennen</button></div></div>
+      <div class="opt-row"><div><div class="t">Klausuren aus Untis</div><div class="d">Landen automatisch bei den Terminen</div></div>
+        <label class="switch"><input type="checkbox" data-setting="untisExams" ${st().settings.untisExams !== false ? 'checked' : ''}><span></span></label></div>
+      <div class="opt-row"><div><div class="t">Hausaufgaben aus Untis</div><div class="d">Landen automatisch bei den Aufgaben</div></div>
+        <label class="switch"><input type="checkbox" data-setting="untisHomework" ${st().settings.untisHomework !== false ? 'checked' : ''}><span></span></label></div>`;
   };
 
   PL.extraActions = Object.assign(PL.extraActions || {}, {

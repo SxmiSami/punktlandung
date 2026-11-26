@@ -141,6 +141,14 @@ class Session {
     if (!this.personId) throw new UntisError('Dein Untis-Konto ist mit keinem Stundenplan verknüpft.', 400);
   }
 
+  /* Neuere Untis-Schnittstelle (REST) mit derselben Sitzung */
+  async getJson(path: string, query: Record<string, string | number>) {
+    const q = new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)]));
+    const res = await fetch(`${this.base}${path}?${q}`, { headers: { Cookie: this.cookie(), Accept: 'application/json' }, redirect: 'manual' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  }
+
   async logout() { try { await this.rpc('logout'); } catch (_) { /* egal */ } }
 }
 
@@ -191,13 +199,55 @@ export async function run(body: Json, opts: { base?: string } = {}) {
       subjects: (l.su || []).map((x: Json) => ({ name: x.name || '', long: x.longname || '' })),
       rooms: (l.ro || []).map((x: Json) => x.name || '').filter(Boolean),
       origRooms: (l.ro || []).map((x: Json) => x.orgname || '').filter(Boolean),
-      teachers: (l.te || []).map((x: Json) => x.longname || x.name || '').filter(Boolean),
+      teachers: (l.te || []).map((x: Json) => x.name || '').filter(Boolean),
+      origTeachers: (l.te || []).map((x: Json) => x.orgname || '').filter(Boolean),
       code: l.code || '',                 // '' | 'cancelled' | 'irregular'
       type: l.lstype || 'ls',             // ls = Unterricht, oh = Bürozeit, sb = Bereitschaft, bs = Pausenaufsicht, ex = Prüfung
       info: [l.substText, l.info, l.lstext].filter(Boolean).join(' · '),
     })).filter((l: Json) => l.type === 'ls' || l.type === 'ex');
 
-    return { ok: true, name: s.name, timegrid, lessons };
+    // Klausuren und Hausaufgaben (optional – manche Schulen geben sie für Schüler nicht frei)
+    let exams: Json[] | null = null, homework: Json[] | null = null;
+    const ex = body.extras;
+    if (ex && /^\d{4}-\d{2}-\d{2}$/.test(ex.from || '') && /^\d{4}-\d{2}-\d{2}$/.test(ex.to || '') && ex.to >= ex.from
+        && (Date.parse(ex.to) - Date.parse(ex.from)) / 864e5 <= 130) {
+      const range = { startDate: ymd(ex.from), endDate: ymd(ex.to) };
+      try {
+        const j = await s.getJson('/WebUntis/api/exams', { ...range, klasseId: -1, withGrades: 'false' });
+        const list = (j && j.data && j.data.exams) || [];
+        exams = list.filter((e: Json) => {
+          const st = e.assignedStudents || [];
+          return !st.length || st.some((x: Json) => x.id === s.personId);
+        }).map((e: Json) => ({
+          id: e.id,
+          date: isoOf(e.examDate),
+          start: e.startTime ? hhmm(e.startTime) : '',
+          end: e.endTime ? hhmm(e.endTime) : '',
+          subject: e.subject || '',
+          type: e.examType || '',
+          name: e.name || '',
+          text: e.text || '',
+          rooms: (e.rooms || []).map((r: Json) => (typeof r === 'string' ? r : r.name || '')).filter(Boolean),
+        }));
+      } catch (_) { exams = null; }
+      try {
+        const j = await s.getJson('/WebUntis/api/homeworks/lessons', range);
+        const d = (j && j.data) || {};
+        const subj: Record<string, string> = {};
+        (d.lessons || []).forEach((l: Json) => { subj[l.id] = l.subject || ''; });
+        homework = (d.homeworks || []).map((h: Json) => ({
+          id: h.id,
+          subject: subj[h.lessonId] || '',
+          date: h.date ? isoOf(h.date) : '',
+          due: h.dueDate ? isoOf(h.dueDate) : '',
+          text: String(h.text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+          remark: h.remark || '',
+          done: !!h.completed,
+        }));
+      } catch (_) { homework = null; }
+    }
+
+    return { ok: true, name: s.name, timegrid, lessons, exams, homework };
   } finally {
     await s.logout();
   }

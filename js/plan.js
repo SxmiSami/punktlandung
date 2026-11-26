@@ -27,7 +27,7 @@
   PL.period = (p) => st().settings.periods[p - 1] || { start: '', end: '' };
 
   /* Unterrichtsblöcke eines Tages (Doppelstunden zusammengefasst) */
-  PL.blocksOn = function (date) {
+  PL.blocksOn = function (date, opts) {
     const day = (date.getDay() + 6) % 7;
     if (day > 4) return [];
     const wt = PL.weekType(date);
@@ -44,7 +44,7 @@
       }
     });
     blocks.forEach((b) => { b.start = PL.period(b.from).start; b.end = PL.period(b.to).end; });
-    return PL.untis ? PL.untis.annotate(date, blocks) : blocks;
+    return PL.untis && !(opts && opts.raw) ? PL.untis.annotate(date, blocks) : blocks;
   };
 
   /* Die nächsten Unterrichtstage eines Fachs (ab morgen), je Tag der erste Block */
@@ -82,30 +82,81 @@
     return DAYS_LONG[(d.getDay() + 6) % 7] + ', ' + d.getDate() + '. ' + PL.MONTHS[d.getMonth()];
   };
 
+  /* ================= Ein Tag mit allem, was Untis weiß ================= */
+  /* Liefert Stunden (aus dem Plan) und Zusätze (Klausuren, Vertretungen …),
+     mit Status, Hausaufgaben und Spalte (lane), falls sich zwei überschneiden. */
+  const NEUTRAL = '#64748B';
+  PL.dayItems = function (date) {
+    const iso = PL.isoDate(date);
+    const blocks = PL.blocksOn(date).map((b) => Object.assign({ kind: 'lesson' }, b));
+    const extras = (PL.untis ? PL.untis.extrasOn(date, blocks) : []).map((x) => Object.assign({ kind: 'extra', ids: [] }, x));
+    // selbst eingetragene Klausuren/Tests färben die Stunde des Fachs
+    st().events.filter((e) => e.date === iso && e.subjectId && /Klausur|Test|Abiprüfung/.test(e.type)).forEach((e) => {
+      const name = e.type + (e.title ? ': ' + e.title : '');
+      const x = extras.find((i) => i.exam && i.subjectId === e.subjectId);
+      if (x) { x.examName = x.examName || name; return; }
+      const b = blocks.find((i) => i.subjectId === e.subjectId && !i.cancelled) || blocks.find((i) => i.subjectId === e.subjectId);
+      if (b) { b.exam = true; b.cancelled = false; b.examName = b.examName || name; }
+    });
+    const items = extras.concat(blocks);
+    items.forEach((it) => {
+      it.start = PL.period(it.from).start; it.end = PL.period(it.to).end;
+      const sub = it.subjectId && PL.subject(it.subjectId);
+      it.color = sub ? sub.color : NEUTRAL;
+      it.short = sub ? sub.short : it.label;
+      it.name = sub ? sub.name : it.label;
+      it.status = it.exam ? 'exam' : it.eva ? 'eva' : it.cancelled ? 'off' : (it.newRoom || (it.origTeacher && it.teacher && it.origTeacher !== it.teacher)) ? 'chg' : '';
+    });
+    // offene Hausaufgaben, die zu dieser Stunde fällig sind
+    st().tasks.filter((t) => !t.done && t.due === iso && t.subjectId).forEach((t) => {
+      const it = items.find((i) => i.subjectId === t.subjectId && i.status !== 'off') || items.find((i) => i.subjectId === t.subjectId);
+      if (it) (it.tasks = it.tasks || []).push(t);
+    });
+    // Überschneidungen nebeneinander: Neues (Klausur) links, die ausfallende Stunde rechts
+    items.sort((a, b) => a.from - b.from || (a.kind === b.kind ? 0 : a.kind === 'extra' ? -1 : 1));
+    items.forEach((it, i) => {
+      it.lane = 0; it.lanes = 1;
+      const over = items.slice(0, i).filter((o) => o.from <= it.to && it.from <= o.to);
+      if (over.length) {
+        it.lanes = 2; over.forEach((o) => { o.lanes = 2; });
+        it.lane = over.some((o) => o.lane === 0) ? 1 : 0;
+      }
+    });
+    return items;
+  };
+
+  const tagFor = (it) => (it.status === 'exam' ? ' <span class="tag tag-exam">KLAUSUR</span>' : it.status === 'eva' ? ' <span class="tag tag-eva">EVA</span>' : it.status === 'off' ? ' <span class="tag tag-off">ENTFÄLLT</span>' : it.status === 'chg' ? ` <span class="tag tag-chg">${it.newRoom ? 'RAUM' : 'VERTRETUNG'}</span>` : '');
+  const roomHtml = (it) => (it.newRoom ? `<b class="room-new">${esc(it.newRoom)}</b>${it.room ? ` <s>${esc(it.room)}</s>` : ''}` : esc(it.room || ''));
+  const teacherHtml = (it) => {
+    if (it.status === 'eva' && it.origTeacher) return `<s class="tch-off">${esc(it.origTeacher)}</s>`;
+    if (it.origTeacher && it.teacher && it.origTeacher !== it.teacher) return `<b class="tch-new">${esc(it.teacher)}</b> <s>${esc(it.origTeacher)}</s>`;
+    return esc(it.teacher || '');
+  };
+
   /* ================= Karten für die Übersicht ================= */
   PL.scheduleCard = function () {
     const hasPlan = st().lessons.length > 0;
-    let date = new Date(), blocks = PL.blocksOn(date), label = 'Heute';
-    const over = blocks.length && toMin(blocks[blocks.length - 1].end) < nowMin();
-    if (!blocks.length || over) {
+    let date = new Date(), items = PL.dayItems(date), label = 'Heute';
+    const over = items.length && toMin(items[items.length - 1].end) < nowMin() && items.every((i) => toMin(i.end) < nowMin());
+    if (!items.length || over) {
       for (let i = 1; i <= 7; i++) {
-        const d = PL.addDays(new Date(), i), b = PL.blocksOn(d);
-        if (b.length) { date = d; blocks = b; label = i === 1 ? 'Morgen' : DAYS_LONG[(d.getDay() + 6) % 7]; break; }
+        const d = PL.addDays(new Date(), i), b = PL.dayItems(d);
+        if (b.length) { date = d; items = b; label = i === 1 ? 'Morgen' : DAYS_LONG[(d.getDay() + 6) % 7]; break; }
       }
     }
     const isToday = label === 'Heute', now = nowMin();
     const wt = PL.weekType(date);
-    const rows = blocks.map((b) => {
-      const sub = PL.subject(b.subjectId);
-      const live = isToday && !b.cancelled && toMin(b.start) <= now && now <= toMin(b.end);
-      const past = isToday && toMin(b.end) < now;
-      const room = b.newRoom ? `<b class="room-new">${esc(b.newRoom)}</b> <s>${esc(b.room)}</s>` : esc(b.room);
-      return `<a class="lesson-row ${live ? 'live' : ''} ${past ? 'past' : ''} ${b.cancelled ? 'cancelled' : ''}" style="--c:${sub.color}" href="#/fach/${sub.id}">
-        <span class="lr-time num">${esc(b.start)}<small>${esc(b.end)}</small></span>
+    const iso = PL.isoDate(date);
+    const rows = items.map((it, idx) => {
+      const live = isToday && it.status !== 'off' && toMin(it.start) <= now && now <= toMin(it.end);
+      const past = isToday && toMin(it.end) < now;
+      const tch = teacherHtml(it);
+      return `<button class="lesson-row st-${it.status || 'ok'} ${live ? 'live' : ''} ${past ? 'past' : ''}" style="--c:${it.color}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
+        <span class="lr-time num">${esc(it.start)}<small>${esc(it.end)}</small></span>
         <span class="lr-bar"></span>
-        <span class="row-main"><span class="row-title" style="display:block">${esc(sub.name)}${live ? ' <span class="tag tag-live">JETZT</span>' : ''}${b.cancelled ? ' <span class="tag tag-off">ENTFÄLLT</span>' : ''}</span>
-          <span class="row-sub" style="display:block">${b.from === b.to ? b.from + '.' : b.from + '.–' + b.to + '.'} Std.${b.room || b.newRoom ? ' · ' + room : ''}${sub.teacher ? ' · ' + esc(sub.teacher) : ''}${b.info ? ' · ' + esc(b.info) : ''}</span></span>
-      </a>`;
+        <span class="row-main"><span class="row-title" style="display:block">${esc(it.name)}${live ? ' <span class="tag tag-live">JETZT</span>' : ''}${tagFor(it)}${it.tasks ? ` <span class="tag tag-hw">${ic('tasks', 'i-sm')} ${it.tasks.length}</span>` : ''}</span>
+          <span class="row-sub" style="display:block">${it.from === it.to ? it.from + '.' : it.from + '.–' + it.to + '.'} Std.${it.room || it.newRoom ? ' · ' + roomHtml(it) : ''}${tch ? ' · ' + tch : ''}${it.examName ? ' · ' + esc(it.examName) : it.info ? ' · ' + esc(it.info) : ''}</span></span>
+      </button>`;
     }).join('');
     return `<section class="card">
       <div class="card-head"><div><h2 class="card-title">${ic('clock')} Stundenplan</h2><div class="card-sub">${hasPlan ? label + (wt ? ` · ${wt}-Woche` : '') : 'Noch nicht eingetragen'}</div></div><a class="link-btn" href="#/plan">Woche ${ic('chevron-right', 'i-sm')}</a></div>
@@ -147,6 +198,7 @@
   }
 
   /* ================= Kalender: Woche & Termine ================= */
+  PL.ui.planEdit = false;
   PL.views.plan = function (mode) {
     if (mode) PL.ui.planMode = mode;
     const m = PL.ui.planMode;
@@ -154,46 +206,62 @@
     if (m === 'events') return PL.views.events(seg);
 
     const s = st().settings;
+    const edit = PL.ui.planEdit || !st().lessons.length;
     const monday = PL.addDays(PL.mondayOf(new Date()), PL.ui.planWeek * 7);
     const friday = PL.addDays(monday, 4);
     const wt = PL.weekType(monday);
     const n = s.periods.length;
     const today = PL.today();
-    const evs = st().events;
-    if (PL.untis) PL.untis.ensureWeek(monday);
+    if (PL.untis && !edit) PL.untis.ensureWeek(monday);
+    const col = (d) => `${2 + 2 * d} / span 2`;
 
     let cells = '';
-    // Kopfzeile
     cells += `<div class="tt-corner">${wt ? `<span class="ab-badge">${wt}</span>` : ''}</div>`;
     DAYS.forEach((d, i) => {
       const date = PL.addDays(monday, i);
       const isT = PL.isoDate(date) === today;
-      cells += `<div class="tt-day ${isT ? 'today' : ''}" style="grid-column:${i + 2}"><span>${d}</span><b>${date.getDate()}</b></div>`;
+      cells += `<div class="tt-day ${isT ? 'today' : ''}" style="grid-column:${col(i)}"><span>${d}</span><b>${date.getDate()}</b></div>`;
     });
-    // Zeitspalte + leere Felder
     for (let p = 1; p <= n; p++) {
       const per = s.periods[p - 1];
       cells += `<div class="tt-time" style="grid-row:${p + 1}"><b>${p}</b><span>${esc(per.start)}</span></div>`;
       for (let d = 0; d < 5; d++) {
-        cells += `<button class="tt-slot" style="grid-row:${p + 1};grid-column:${d + 2}" data-action="add-lesson" data-day="${d}" data-period="${p}" aria-label="${DAYS[d]} ${p}. Stunde hinzufügen">${ic('plus', 'i-sm')}</button>`;
+        cells += edit
+          ? `<button class="tt-slot" style="grid-row:${p + 1};grid-column:${col(d)}" data-action="add-lesson" data-day="${d}" data-period="${p}" aria-label="${DAYS[d]} ${p}. Stunde hinzufügen">${ic('plus', 'i-sm')}</button>`
+          : `<div class="tt-cell" style="grid-row:${p + 1};grid-column:${col(d)}"></div>`;
       }
     }
-    // Unterrichtsblöcke
     const nowM = nowMin();
     for (let d = 0; d < 5; d++) {
       const date = PL.addDays(monday, d), iso = PL.isoDate(date);
-      PL.blocksOn(date).forEach((b) => {
-        if (b.from > n) return;
-        const sub = PL.subject(b.subjectId);
-        const ev = evs.find((e) => e.date === iso && e.subjectId === b.subjectId);
-        const live = iso === today && !b.cancelled && toMin(b.start) <= nowM && nowM <= toMin(b.end);
-        cells += `<button class="tt-block ${live ? 'live' : ''} ${b.cancelled ? 'cancelled' : ''}" title="${esc(b.info || '')}" style="--c:${sub.color};grid-column:${d + 2};grid-row:${b.from + 1} / span ${Math.min(b.to, n) - b.from + 1}" data-action="edit-lesson" data-ids="${b.ids.join(',')}">
-          <b>${esc(sub.short)}</b>${b.newRoom ? `<span class="room-new">${esc(b.newRoom)}</span>` : b.room ? `<span>${esc(b.room)}</span>` : ''}${b.week ? `<i class="wk">${b.week}</i>` : ''}${b.cancelled ? '<em class="off">Entfällt</em>' : ev ? `<em>● ${esc(ev.type)}</em>` : ''}
+      if (edit) {
+        // Bearbeiten: nur der feste Plan, ohne Untis-Änderungen
+        PL.blocksOn(date, { raw: true }).forEach((b) => {
+          if (b.from > n) return;
+          const sub = PL.subject(b.subjectId);
+          cells += `<button class="tt-block editing" style="--c:${sub.color};grid-column:${col(d)};grid-row:${b.from + 1} / span ${Math.min(b.to, n) - b.from + 1}" data-action="edit-lesson" data-ids="${b.ids.join(',')}">
+            <b>${esc(sub.short)}</b>${b.room ? `<span>${esc(b.room)}</span>` : ''}${b.week ? `<i class="wk">${b.week}</i>` : ''}<i class="ed">${ic('edit', 'i-sm')}</i></button>`;
+        });
+        continue;
+      }
+      PL.dayItems(date).forEach((it, idx) => {
+        if (it.from > n) return;
+        const live = iso === today && it.status !== 'off' && toMin(it.start) <= nowM && nowM <= toMin(it.end);
+        const gc = it.lanes === 2 ? `${2 + 2 * d + it.lane} / span 1` : col(d);
+        const tch = teacherHtml(it);
+        const label = it.status === 'exam' ? 'Klausur' : it.status === 'eva' ? 'EVA' : it.status === 'off' ? 'Entfällt' : it.status === 'chg' ? (it.newRoom ? 'Raum' : 'Vertretung') : '';
+        cells += `<button class="tt-block st-${it.status || 'ok'} ${live ? 'live' : ''} ${it.lanes === 2 ? 'half' : ''}" style="--c:${it.color};grid-column:${gc};grid-row:${it.from + 1} / span ${Math.min(it.to, n) - it.from + 1}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
+          <b>${esc(it.short)}</b>${label ? `<em>${label}</em>` : ''}${it.room || it.newRoom ? `<span class="rm">${roomHtml(it)}</span>` : ''}${tch ? `<span class="tch">${tch}</span>` : ''}${it.week ? `<i class="wk">${it.week}</i>` : ''}${it.tasks ? `<i class="hw" title="Hausaufgabe fällig">${ic('tasks', 'i-sm')}${it.tasks.length > 1 ? it.tasks.length : ''}</i>` : ''}
         </button>`;
       });
     }
 
     const range = `${monday.getDate()}. ${PL.MONTHS[monday.getMonth()]} – ${friday.getDate()}. ${PL.MONTHS[friday.getMonth()]}`;
+    const legend = PL.untis && PL.untis.connected() && !edit
+      ? `<div class="tt-legend"><span class="lg off">Entfall</span><span class="lg moved">Raum-/Lehreränderung</span><span class="lg eva">EVA</span><span class="lg exam">Klausur</span><span class="lg hw">${ic('tasks', 'i-sm')} Hausaufgabe</span></div>` : '';
+    const hint = edit
+      ? `Tippe auf ein leeres Feld, um eine Stunde einzutragen, oder auf eine Stunde, um sie zu ändern. Doppelstunden werden automatisch zusammengefasst.${s.abWeeks ? '' : ' A/B-Wochen kannst du in den Einstellungen einschalten.'}`
+      : `Tippe auf eine Stunde für Details.${PL.untis && PL.untis.connected() ? (PL.untis.error ? ` <span style="color:var(--danger)">Untis: ${esc(PL.untis.error)}</span>` : ' Änderungen kommen live aus Untis.') : ' Mit Untis (Einstellungen) siehst du hier auch Ausfälle und Klausuren.'}`;
     return `<div class="page view">
       ${pageHeadPlan('Kalender', seg)}
       <div class="week-nav">
@@ -201,13 +269,53 @@
         <div class="week-label"><b>KW ${PL.isoWeek(monday)}${wt ? ` · ${wt}-Woche` : ''}</b><span>${range}</span></div>
         <button class="icon-btn" data-action="plan-week" data-v="1" aria-label="Nächste Woche">${ic('chevron-right')}</button>
         ${PL.ui.planWeek !== 0 ? `<button class="btn btn-sm" data-action="plan-week" data-v="0">Heute</button>` : ''}
+        ${st().lessons.length ? `<button class="btn btn-sm ${edit ? 'btn-primary' : ''} plan-edit-btn" data-action="plan-edit">${edit ? `${ic('check', 'i-sm')} Fertig` : `${ic('edit', 'i-sm')} Bearbeiten`}</button>` : ''}
       </div>
-      <section class="card tt-card">
+      ${edit && st().lessons.length ? `<div class="edit-banner">${ic('edit', 'i-sm')} Bearbeiten – Änderungen gelten jede Woche</div>` : ''}
+      <section class="card tt-card ${edit ? 'is-edit' : ''}">
         <div class="tt" style="grid-template-rows:auto repeat(${n}, var(--tt-row))">${cells}</div>
       </section>
-      <p class="hint" style="margin:12px 4px 0">Tippe auf ein leeres Feld, um eine Stunde einzutragen. Doppelstunden werden automatisch zusammengefasst.${s.abWeeks ? '' : ' A/B-Wochen kannst du in den Einstellungen einschalten.'}${PL.untis && PL.untis.connected() ? (PL.untis.error ? ` <span style="color:var(--danger)">Untis: ${esc(PL.untis.error)}</span>` : ' Ausfälle und Raumänderungen kommen aus Untis.') : ' Mit Untis (Einstellungen) geht es auch automatisch.'}</p>
+      ${legend}
+      <p class="hint" style="margin:12px 4px 0">${hint}</p>
     </div>`;
   };
+
+  /* Details einer Stunde (Ansichtsmodus) */
+  PL.lessonInfoSheet = function (iso, idx) {
+    const date = PL.parseDate(iso);
+    const it = PL.dayItems(date)[Number(idx)];
+    if (!it) return;
+    const rows = [];
+    const row = (cls, t, d) => rows.push(`<div class="info-row ${cls}"><b>${t}</b><span>${d}</span></div>`);
+    if (it.status === 'exam') row('exam', 'Klausur', esc(it.examName || 'In Untis als Prüfung eingetragen'));
+    if (it.status === 'eva') row('eva', 'EVA', 'Eigenverantwortliches Arbeiten – ohne Lehrkraft');
+    if (it.status === 'off') row('off', 'Entfällt', 'Die Stunde findet nicht statt');
+    if (it.newRoom) row('moved', 'Raumänderung', `${esc(it.newRoom)}${it.room ? ` statt ${esc(it.room)}` : ''}`);
+    if (it.origTeacher && it.teacher && it.origTeacher !== it.teacher) row('moved', 'Vertretung', `${esc(it.teacher)} statt ${esc(it.origTeacher)}`);
+    if (it.info && it.info !== it.examName) row('', 'Hinweis', esc(it.info));
+    const sub = it.subjectId && PL.subject(it.subjectId);
+    const tasks = (it.tasks || []);
+    PL.openSheet(`
+      ${PL.sheetHead(esc(it.name), `${DAYS_LONG[(date.getDay() + 6) % 7]}, ${PL.fmtDate(iso)} · ${it.from === it.to ? it.from + '.' : it.from + '.–' + it.to + '.'} Std. · ${esc(it.start)}–${esc(it.end)} Uhr`)}
+      <div class="info-grid">
+        ${it.room || it.newRoom ? `<div><span class="hint">Raum</span><b>${roomHtml(it)}</b></div>` : ''}
+        ${it.teacher || it.origTeacher ? `<div><span class="hint">Lehrkraft</span><b>${teacherHtml(it)}</b></div>` : sub && sub.teacher ? `<div><span class="hint">Lehrkraft</span><b>${esc(sub.teacher)}</b></div>` : ''}
+        ${it.week ? `<div><span class="hint">Rhythmus</span><b>Nur ${it.week}-Woche</b></div>` : ''}
+      </div>
+      ${rows.join('')}
+      ${tasks.length ? `<div class="field-label" style="margin-top:14px">Bis zu dieser Stunde fällig</div>
+        <div class="tasks card" style="padding:6px">${tasks.map((t) => `<button class="task-main" data-action="open-task" data-id="${t.id}" style="padding:10px"><span class="task-title">${esc(t.title)}</span></button>`).join('')}</div>` : ''}
+      <div class="sheet-foot" style="margin-top:16px">
+        ${it.kind === 'lesson' ? `<button type="button" class="btn" data-action="edit-lesson" data-ids="${(it.allIds || it.ids).join(',')}" style="flex:0 0 auto">${ic('edit', 'i-sm')} Stunde ändern</button>` : ''}
+        ${sub ? `<button type="button" class="btn btn-primary" data-action="add-task" data-subject="${sub.id}">${ic('plus', 'i-sm')} Hausaufgabe</button>` : `<button type="button" class="btn btn-primary" data-action="close-sheet">OK</button>`}
+      </div>`);
+  };
+
+  PL.extraActions = Object.assign(PL.extraActions || {}, {
+    'lesson-info': (d) => PL.lessonInfoSheet(d.date, d.i),
+    'plan-edit': () => { PL.ui.planEdit = !(PL.ui.planEdit || !st().lessons.length); PL.render(); },
+  });
+
   function pageHeadPlan(title, seg) {
     return `<header class="page-head"><div><div class="eyebrow">${seg}</div><h1 class="page-title">${title}</h1></div></header>`;
   }
