@@ -3,6 +3,9 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.4.3
+- Fächer in Fenstern (z. B. „Neue Hausaufgabe“, „Note eintragen“) stehen jetzt in mehreren Zeilen untereinander – alle sofort antippbar, kein seitliches Wischen mehr nötig
+
 ## 0.4.2
 - Fächer in „Neue Hausaufgabe“ lassen sich auf iPhone/iPad wieder seitlich durchwischen (die Zoom-Sperre hat das Wischen blockiert)
 - Seitliches Wischen im Fenster schließt es nicht mehr versehentlich
