@@ -206,9 +206,11 @@
     });
     split.forEach((b) => { b.start = PL.period(b.from).start; b.end = PL.period(b.to).end; });
     blocks = split;
+    const known = new Set(Object.values(st().settings.untisMap || {}));
     blocks.forEach((b) => {
       const hits = info.filter((l) => l.subjectId === b.subjectId && overlap(l, b));
-      if (!hits.length) return;
+      // nur Fächer, die aus Untis kommen – selbst ergänzte Stunden bleiben immer
+      if (!hits.length) { if (info.length && known.has(b.subjectId)) b.absent = true; return; }
       const live = hits.filter((l) => l.code !== 'cancelled');
       const txt = hits.map((l) => l.info).filter(Boolean);
       if (EVA_RE.test(txt.join(' '))) b.eva = true;
@@ -222,7 +224,7 @@
       if (b.eva && !b.origTeacher) { b.origTeacher = b.teacher; b.teacher = ''; }
       if (txt.length) b.info = txt[0];
     });
-    return blocks;
+    return blocks.filter((b) => !b.absent);
   };
 
   /* Was Untis an diesem Tag zusätzlich hat: Klausuren, Vertretungen in anderen
@@ -241,6 +243,7 @@
         teacher: l.teachers[0] || '', origTeacher: l.origTeachers[0] || '',
         exam: l.type === 'ex' || EXAM_RE.test(l.info), eva: EVA_RE.test(l.info),
         info: l.subjects[0] ? l.info : '',
+        irregular: l.code === 'irregular',
       };
       // direkt aufeinanderfolgende Einträge (z. B. Klausur über zwei Stunden) zusammenfassen
       const prev = out.find((o) => o.label === it.label && o.room === it.room && o.to === it.from - 1 && o.exam === it.exam);
@@ -248,12 +251,14 @@
       out.push(it);
     });
     const c = cache();
-    (c.exams || []).filter((x) => x.date === iso && x.start).forEach((x) => {
+    (c.exams || []).filter((x) => x.date === iso).forEach((x) => {
       const m = U.matchSubject({ name: x.subject, long: '' });
       const sid = m && m !== 'skip' ? m : null;
-      const r = U.periodRange(x.start, x.end || x.start, st().settings.periods);
-      if (!r) return;
       const name = [x.name, x.text].filter(Boolean).join(' – ');
+      const own = out.filter((o) => (sid ? o.subjectId === sid : o.label === x.subject));
+      if (own.length) { own.forEach((o) => { o.exam = true; o.examName = name; }); return; }
+      const r = x.start ? U.periodRange(x.start, x.end || x.start, st().settings.periods) : null;
+      if (!r) return;
       const hit = out.find((o) => (sid ? o.subjectId === sid : o.label === x.subject) && overlap(o, r))
         || blocks.find((b) => sid && b.subjectId === sid && overlap(b, r));
       if (hit) { hit.exam = true; hit.examName = name; if (hit.cancelled) hit.cancelled = false; return; }

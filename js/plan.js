@@ -99,8 +99,9 @@
     // selbst eingetragene Klausuren/Tests färben die Stunde des Fachs
     st().events.filter((e) => e.date === iso && e.subjectId && /Klausur|Test|Abiprüfung/.test(e.type)).forEach((e) => {
       const name = e.type + (e.title ? ': ' + e.title : '');
-      const x = extras.find((i) => i.exam && i.subjectId === e.subjectId);
-      if (x) { x.examName = x.examName || name; return; }
+      // Klausuren finden meist als Zusatzstunde in einem anderen Raum statt
+      const xs = extras.filter((i) => i.subjectId === e.subjectId);
+      if (xs.length) { xs.forEach((i) => { i.exam = true; i.examName = i.examName || name; }); return; }
       const b = blocks.find((i) => i.subjectId === e.subjectId && !i.cancelled) || blocks.find((i) => i.subjectId === e.subjectId);
       if (b) { b.exam = true; b.cancelled = false; b.examName = b.examName || name; }
     });
@@ -111,7 +112,7 @@
       it.color = sub ? sub.color : NEUTRAL;
       it.short = sub ? sub.short : it.label;
       it.name = sub ? sub.name : it.label;
-      it.status = it.exam ? 'exam' : it.eva ? 'eva' : it.cancelled ? 'off' : (it.newRoom || (it.origTeacher && it.teacher && it.origTeacher !== it.teacher)) ? 'chg' : '';
+      it.status = it.exam ? 'exam' : it.eva ? 'eva' : it.cancelled ? 'off' : (it.newRoom || it.irregular || (it.origTeacher && it.teacher && it.origTeacher !== it.teacher)) ? 'chg' : '';
     });
     // offene Hausaufgaben, die zu dieser Stunde fällig sind
     st().tasks.filter((t) => !t.done && t.due === iso && t.subjectId).forEach((t) => {
@@ -131,7 +132,7 @@
     return items;
   };
 
-  const tagFor = (it) => (it.status === 'exam' ? ' <span class="tag tag-exam">KLAUSUR</span>' : it.status === 'eva' ? ' <span class="tag tag-eva">EVA</span>' : it.status === 'off' ? ' <span class="tag tag-off">ENTFÄLLT</span>' : it.status === 'chg' ? ` <span class="tag tag-chg">${it.newRoom ? 'RAUM' : 'VERTRETUNG'}</span>` : '');
+  const tagFor = (it) => (it.status === 'exam' ? ' <span class="tag tag-exam">KLAUSUR</span>' : it.status === 'eva' ? ' <span class="tag tag-eva">EVA</span>' : it.status === 'off' ? ' <span class="tag tag-off">ENTFÄLLT</span>' : it.status === 'chg' ? ` <span class="tag tag-chg">${it.newRoom ? 'RAUM' : it.kind === 'extra' ? 'ÄNDERUNG' : 'VERTRETUNG'}</span>` : '');
   const roomHtml = (it) => (it.newRoom ? `<b class="room-new">${esc(it.newRoom)}</b>${it.room ? ` <s>${esc(it.room)}</s>` : ''}` : esc(it.room || ''));
   const teacherHtml = (it) => {
     if (it.status === 'eva' && it.origTeacher) return `<s class="tch-off">${esc(it.origTeacher)}</s>`;
@@ -255,7 +256,7 @@
         const live = iso === today && it.status !== 'off' && toMin(it.start) <= nowM && nowM <= toMin(it.end);
         const gc = it.lanes === 2 ? `${2 + 2 * d + it.lane} / span 1` : col(d);
         const tch = teacherHtml(it);
-        const label = it.status === 'exam' ? 'Klausur' : it.status === 'eva' ? 'EVA' : it.status === 'off' ? 'Entfällt' : it.status === 'chg' ? (it.newRoom ? 'Raum' : 'Vertretung') : '';
+        const label = it.status === 'exam' ? 'Klausur' : it.status === 'eva' ? 'EVA' : it.status === 'off' ? 'Entfällt' : it.status === 'chg' ? (it.newRoom ? 'Raum' : it.kind === 'extra' ? 'Änderung' : 'Vertretung') : '';
         cells += `<button class="tt-block st-${it.status || 'ok'} ${live ? 'live' : ''} ${it.lanes === 2 ? 'half' : ''}" style="--c:${it.color};grid-column:${gc};grid-row:${it.from + 1} / span ${Math.min(it.to, n) - it.from + 1}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
           <b>${esc(it.short)}</b>${label ? `<em>${label}</em>` : ''}${it.room || it.newRoom ? `<span class="rm">${roomHtml(it)}</span>` : ''}${tch ? `<span class="tch">${tch}</span>` : ''}${it.week ? `<i class="wk">${it.week}</i>` : ''}${it.tasks ? `<i class="hw" title="Hausaufgabe fällig">${ic('tasks', 'i-sm')}${it.tasks.length > 1 ? it.tasks.length : ''}</i>` : ''}
         </button>`;
