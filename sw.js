@@ -1,5 +1,5 @@
 /* Service Worker: macht die App offline-fähig */
-const VERSION = 'pl-0.2.2'; // gleich wie PL.VERSION in js/data.js
+const VERSION = 'pl-0.2.3'; // gleich wie PL.VERSION in js/data.js
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
   'js/config.js', 'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/plan.js', 'js/sync.js', 'js/app.js',
@@ -7,7 +7,8 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: 'reload' – nicht aus dem Browser-Cache, sondern frisch vom Server holen
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -22,9 +23,12 @@ self.addEventListener('fetch', (e) => {
   const cacheable = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdn.jsdelivr.net';
   if (url.origin !== location.origin && !cacheable) return;
 
-  // Netzwerk zuerst (damit Updates sofort ankommen), sonst Cache
+  // Netzwerk zuerst (damit Updates sofort ankommen), sonst Cache.
+  // Eigene Dateien mit 'no-cache': GitHub Pages erlaubt 10 Min. Browser-Cache –
+  // so fragt der Browser trotzdem jedes Mal kurz nach, ob sich etwas geändert hat.
+  const net = url.origin === location.origin && req.mode !== 'navigate' ? new Request(req, { cache: 'no-cache' }) : req;
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(net).then((res) => {
       if (res && (res.ok || res.type === 'opaque')) {
         const copy = res.clone();
         caches.open(VERSION).then((c) => c.put(req, copy));

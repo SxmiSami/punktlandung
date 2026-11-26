@@ -231,6 +231,24 @@
   render();
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+        // Die installierte App wird meist nur aus dem Hintergrund geholt, nicht neu geladen –
+        // deshalb beim Zurückkehren selbst nach einer neuen Version fragen.
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+      }).catch(() => {});
+    });
+    // Neue Version hat übernommen → einmal neu laden (nicht beim allerersten Installieren).
+    // Ist gerade ein Fenster offen (z. B. beim Tippen), erst danach.
+    let hadController = !!navigator.serviceWorker.controller, reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
+      const tryReload = () => {
+        if (reloading) return;
+        if (!document.getElementById('sheetLayer').hidden) { setTimeout(tryReload, 1000); return; }
+        reloading = true; location.reload();
+      };
+      tryReload();
+    });
   }
 })();

@@ -3,6 +3,10 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.2.3
+- Updates kommen in der installierten Web-App zuverlässig an: Dateien werden nicht mehr bis zu 10 Min. aus dem Browser-Cache genommen
+- Beim Zurückholen der App wird nach einer neuen Version gesucht und danach automatisch einmal neu geladen (nicht, solange ein Fenster offen ist)
+
 ## 0.2.2
 - Größerer Knopf „Hausaufgabe eintragen“ in der Übersicht und unter Aufgaben
 - Fach der aktuellen Stunde (oder der gerade beendeten – bis 20 Min. danach bzw. bis die nächste eigene Stunde beginnt) wird automatisch ausgewählt
