@@ -9,6 +9,7 @@
     { id: 'faecher', label: 'Fächer', icon: 'layers' },
     { id: 'plan', label: 'Kalender', icon: 'calendar' },
     { id: 'aufgaben', label: 'Aufgaben', icon: 'tasks' },
+    { id: 'lernzettel', label: 'Lernzettel', tab: 'Zettel', icon: 'file' },
     { id: 'abitur', label: 'Abitur', icon: 'cap' },
   ];
 
@@ -328,6 +329,7 @@
       </div>
 
       <div class="split">${list(ks, 'K', 'Klausuren')}${list(os, 'S', 'Sonstige Mitarbeit')}</div>
+      ${PL.subjectNotesCard(sub)}
     </div>`;
   };
 
@@ -531,6 +533,8 @@
         </section>
 
         ${accountCard()}
+
+        ${PL.notesStorageCard({ link: true })}
 
         <section class="card">
           <div class="card-head"><div><h2 class="card-title">Daten</h2><div class="card-sub">${PL.sync.user ? 'Gespeichert auf diesem Gerät und in deinem Konto' : 'Ohne Konto nur auf diesem Gerät gespeichert'}</div></div></div>

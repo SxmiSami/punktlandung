@@ -1,8 +1,8 @@
 /* Service Worker: macht die App offline-fähig */
-const VERSION = 'pl-0.2.3'; // gleich wie PL.VERSION in js/data.js
+const VERSION = 'pl-0.3.0'; // gleich wie PL.VERSION in js/data.js
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
-  'js/config.js', 'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/plan.js', 'js/sync.js', 'js/app.js',
+  'js/config.js', 'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/plan.js', 'js/sync.js', 'js/files.js', 'js/notes.js', 'js/app.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 

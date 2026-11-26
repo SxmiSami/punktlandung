@@ -22,6 +22,8 @@
     periods: PL.DEFAULT_PERIODS.map((p) => Object.assign({}, p)),
     abWeeks: false,         // A/B-Wochen im Stundenplan
     abRef: null,            // Montag (ISO) einer A-Woche
+    noteMode: 'both',       // Lernzettel: both | cloud | local
+    compressPhotos: true,   // Fotos beim Hochladen verkleinern
   });
 
   PL.emptyState = () => ({
@@ -34,6 +36,9 @@
     events: [],
     lessons: [],            // { id, subjectId, day 0–4, period 1–n, room, week null|'A'|'B' }
     tasks: [],              // { id, subjectId, title, due, important, done }
+    notes: [],              // Lernzettel { id, subjectId, title, mime, size, origSize, created, cloud, devices: [] }
+    devices: {},            // Geräte mit lokalen Zetteln { id: { name } }
+    deletedNotes: [],       // gelöschte Zettel-IDs (damit andere Geräte ihre Kopie auch löschen)
   });
 
   function normalize(s) {
@@ -46,6 +51,9 @@
     out.events = Array.isArray(s.events) ? s.events : [];
     out.lessons = Array.isArray(s.lessons) ? s.lessons : [];
     out.tasks = Array.isArray(s.tasks) ? s.tasks : [];
+    out.notes = Array.isArray(s.notes) ? s.notes.filter((n) => n && n.id).map((n) => Object.assign({ devices: [] }, n, { devices: Array.isArray(n.devices) ? n.devices : [] })) : [];
+    out.devices = s.devices && typeof s.devices === 'object' && !Array.isArray(s.devices) ? s.devices : {};
+    out.deletedNotes = Array.isArray(s.deletedNotes) ? s.deletedNotes.slice(-300) : [];
     if (!Array.isArray(out.settings.periods) || !out.settings.periods.length) out.settings.periods = PL.DEFAULT_PERIODS.map((p) => Object.assign({}, p));
     out.overrides = s.overrides && typeof s.overrides === 'object' ? s.overrides : {};
     const ex = Array.isArray(s.exams) ? s.exams : [];

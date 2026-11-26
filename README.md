@@ -7,6 +7,7 @@ Eine Noten-App fürs Abitur, die am PC und auf dem Handy läuft (als installierb
 - **Abitur:** Block I (Halbjahre, LK doppelt) und Block II (Prüfungen schriftlich/mündlich), Zulassungs-Check und Ziel-Rechner
 - **Kalender:** Stundenplan mit Doppelstunden und A/B-Wochen, dazu Klausuren und Tests mit Countdown
 - **Aufgaben:** Hausaufgaben mit Fälligkeit (z. B. „bis zur nächsten Stunde“) zum Abhaken
+- **Lernzettel:** Fotos und PDFs pro Fach – in der Cloud, nur auf dem Gerät oder beides, mit Speicheranzeige und Teilen mit Freunden
 - Hell- und Dunkelmodus, funktioniert offline, Backup als JSON-Datei (Export/Import)
 
 ## Rechenregeln
@@ -32,6 +33,8 @@ Auf dem Handy die Seite öffnen und **„Zum Home-Bildschirm“** (iPhone, Safar
 Die Daten werden immer lokal im Browser gespeichert (funktioniert auch offline). Mit einem **Konto** (Einstellungen → Konto & Synchronisierung) werden sie zusätzlich über Supabase auf allen Geräten synchronisiert. Die einmalige Einrichtung steht in [SYNC-EINRICHTEN.md](SYNC-EINRICHTEN.md).
 
 Ohne Konto kannst du Daten über **Einstellungen → Backup exportieren / importieren** übertragen.
+
+**Lernzettel** liegen auf Wunsch lokal im Browser (IndexedDB) und/oder im Supabase-Speicher (250 MB pro Person, 25 MB pro Datei, Fotos werden auf 2000 px verkleinert). Das Backup enthält nur die Einträge, nicht die Dateien selbst.
 
 ## Lokal starten
 

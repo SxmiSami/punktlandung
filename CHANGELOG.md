@@ -3,6 +3,15 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.3.0
+- **Lernzettel**: Fotos, PDFs und andere Dateien hochladen – pro Fach und auf der neuen Seite „Lernzettel“
+- Speichern wahlweise in der Cloud, nur auf diesem Gerät oder beides; jederzeit umstellbar (z. B. aus der Cloud nehmen und nur lokal behalten, wenn der Platz knapp wird)
+- Anzeige, wo ein Zettel liegt: Cloud, dieses Gerät, weitere Geräte
+- Speicheranzeige: eigene Cloud (250 MB), alle zusammen (1 GB) und dieses Gerät
+- Fotos werden beim Hochladen verkleinert (max. 2000 px, spart meist 80–90 %)
+- **Teilen** per E-Mail-Adresse mit Freunden, die ein Konto haben; „Mit mir geteilt“ mit Offline-Kopie
+- Einmalig `supabase/lernzettel.sql` in Supabase ausführen (siehe SYNC-EINRICHTEN.md)
+
 ## 0.2.3
 - Updates kommen in der installierten Web-App zuverlässig an: Dateien werden nicht mehr bis zu 10 Min. aus dem Browser-Cache genommen
 - Beim Zurückholen der App wird nach einer neuen Version gesucht und danach automatisch einmal neu geladen (nicht, solange ein Fenster offen ist)

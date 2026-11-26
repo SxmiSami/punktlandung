@@ -5,4 +5,8 @@
 window.PL_CONFIG = {
   supabaseUrl: 'https://quurwakilvvunjhcbmzz.supabase.co',
   supabaseAnonKey: 'sb_publishable_jvnIIUVtss5IG27f01JB4Q_5DX3o3SK', // Publishable key (öffentlich)
+
+  // Lernzettel-Speicher (kostenloser Supabase-Plan: 1 GB für alle zusammen).
+  // Bei Änderungen auch die 250 MB in supabase/lernzettel.sql anpassen.
+  notes: { bucket: 'lernzettel', quotaMB: 250, totalMB: 1024, maxFileMB: 25 },
 };

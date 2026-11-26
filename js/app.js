@@ -23,11 +23,12 @@
     if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
-    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.label}</span>${n.id === 'aufgaben' && openTasks ? `<i class="tab-badge">${openTasks}</i>` : ''}</a>`;
+    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.tab || n.label}</span>${n.id === 'aufgaben' && openTasks ? `<i class="tab-badge">${openTasks}</i>` : ''}</a>`;
     tb.innerHTML = PL.NAV.map(tab).join('');
     // Schwebender +-Knopf: passt sich der aktuellen Seite an
     const fab = document.getElementById('fab');
     const fabAction = r.name === 'aufgaben' ? ['add-task', 'Aufgabe hinzufügen']
+      : r.name === 'lernzettel' ? ['add-note', 'Lernzettel hochladen']
       : (r.name === 'plan' && PL.ui.planMode === 'week') ? ['add-lesson', 'Stunde eintragen']
       : (r.name === 'termine' || r.name === 'plan') ? ['add-event', 'Termin hinzufügen']
       : ['add-grade', 'Note eintragen'];
@@ -55,6 +56,7 @@
       case 'termine': html = PL.views.plan('events'); break;
       case 'plan': html = PL.views.plan(); break;
       case 'aufgaben': html = PL.views.tasks(); break;
+      case 'lernzettel': html = PL.views.notes(); break;
       case 'einstellungen': html = PL.views.settings(); break;
       case 'setup': html = PL.views.setup(); break;
       default: html = PL.views.dashboard();
@@ -64,10 +66,18 @@
     renderNav(r);
     if (changed) { window.scrollTo(0, 0); lastRoute = key; }
     else { main.querySelectorAll('.view').forEach((v) => (v.style.animation = 'none')); window.scrollTo(0, y); }
-    const titles = { '': 'Übersicht', faecher: 'Fächer', fach: 'Fach', abitur: 'Abitur', termine: 'Termine', plan: 'Stundenplan', aufgaben: 'Aufgaben', einstellungen: 'Einstellungen', setup: 'Einrichtung' };
+    const titles = { '': 'Übersicht', faecher: 'Fächer', fach: 'Fach', abitur: 'Abitur', termine: 'Termine', plan: 'Stundenplan', aufgaben: 'Aufgaben', lernzettel: 'Lernzettel', einstellungen: 'Einstellungen', setup: 'Einrichtung' };
     document.title = (titles[r.name] || 'Übersicht') + ' · Punktlandung';
   }
   PL.render = render;
+
+  /* Lernzettel beim Laden anderer Daten behalten (die Dateien liegen ja noch da) */
+  function keepNotes(next) {
+    const cur = PL.state;
+    const notes = (Array.isArray(next.notes) ? next.notes : []).slice();
+    cur.notes.forEach((n) => { if (!notes.some((x) => x && x.id === n.id)) notes.push(n); });
+    return Object.assign({}, next, { notes, devices: Object.assign({}, cur.devices, next.devices || {}), deletedNotes: cur.deletedNotes });
+  }
 
   /* ---------- Aktionen ---------- */
   const A = {
@@ -112,22 +122,26 @@
       PL.save();
     },
     'demo': () => {
-      const go = () => { PL.replaceState(PL.demoState()); location.hash = '#/'; PL.toast('Beispieldaten geladen'); };
+      const go = () => { PL.replaceState(keepNotes(PL.demoState())); location.hash = '#/'; PL.toast('Beispieldaten geladen'); };
       if (PL.state.subjects.length) PL.confirmSheet('Beispieldaten laden?', 'Deine aktuellen Daten werden ersetzt. Exportiere vorher ein Backup, wenn du sie behalten willst.', 'Ersetzen', go);
       else go();
     },
     'login': () => PL.authSheet('login'),
     'signup': () => PL.authSheet('signup'),
     'sync-now': () => PL.sync.syncNow && PL.sync.syncNow(),
-    'logout': () => PL.confirmSheet('Abmelden?', 'Deine Noten bleiben in deinem Konto gespeichert und werden von diesem Gerät entfernt. Melde dich einfach wieder an, um sie zurückzuholen.', 'Abmelden', async () => {
+    'logout': () => PL.confirmSheet('Abmelden?', 'Deine Noten bleiben in deinem Konto gespeichert und werden von diesem Gerät entfernt. Melde dich einfach wieder an, um sie zurückzuholen. Lernzettel, die auf diesem Gerät gespeichert sind, bleiben hier und tauchen nach dem Anmelden wieder auf.', 'Abmelden', async () => {
       await PL.sync.signOut();
       location.hash = '#/';
       PL.toast('Abgemeldet');
     }),
     'reset': () => PL.confirmSheet('Alles löschen?', PL.sync.user
-      ? 'Alle Fächer, Noten und Termine werden gelöscht – auf allen Geräten, die mit deinem Konto verbunden sind. Das kann nicht rückgängig gemacht werden.'
-      : 'Alle Fächer, Noten und Termine werden von diesem Gerät gelöscht. Das kann nicht rückgängig gemacht werden.', 'Endgültig löschen', () => {
-      PL.replaceState(PL.emptyState()); location.hash = '#/'; PL.toast('Alle Daten gelöscht');
+      ? 'Alle Fächer, Noten, Termine und Lernzettel werden gelöscht – auf allen Geräten, die mit deinem Konto verbunden sind, und in der Cloud. Das kann nicht rückgängig gemacht werden.'
+      : 'Alle Fächer, Noten, Termine und Lernzettel werden von diesem Gerät gelöscht. Das kann nicht rückgängig gemacht werden.', 'Endgültig löschen', async () => {
+      const dead = PL.state.notes.map((n) => n.id).concat(PL.state.deletedNotes);
+      await PL.files.wipeAll();
+      const fresh = PL.emptyState();
+      fresh.deletedNotes = dead.slice(-300);
+      PL.replaceState(fresh); location.hash = '#/'; PL.toast('Alle Daten gelöscht');
     }),
     'export': () => {
       const blob = new Blob([JSON.stringify(PL.state, null, 2)], { type: 'application/json' });
@@ -147,7 +161,7 @@
           let data;
           try { data = JSON.parse(txt); } catch (e) { PL.toast('Datei konnte nicht gelesen werden'); return; }
           if (!data || !Array.isArray(data.subjects)) { PL.toast('Das ist keine gültige Punktlandung-Datei'); return; }
-          const go = () => { PL.replaceState(data); location.hash = '#/'; PL.toast(`${data.subjects.length} Fächer und ${(data.grades || []).length} Noten importiert`); };
+          const go = () => { PL.replaceState(keepNotes(data)); location.hash = '#/'; PL.toast(`${data.subjects.length} Fächer und ${(data.grades || []).length} Noten importiert`); };
           if (!PL.state.subjects.length) go();
           else PL.confirmSheet('Daten importieren?', `${data.subjects.length} Fächer und ${(data.grades || []).length} Noten ersetzen deine aktuellen Daten.`, 'Importieren', go);
         });
@@ -194,6 +208,8 @@
       PL.toast(`${picked.length} Fächer eingerichtet – los geht's!`);
     },
   };
+
+  Object.assign(A, PL.extraActions || {});
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
