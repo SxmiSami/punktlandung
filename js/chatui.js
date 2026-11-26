@@ -460,7 +460,7 @@
           if (cur === 'note') {
             const notes = PL.state.notes.slice().sort((a, b) => (b.created || '').localeCompare(a.created || ''));
             body.innerHTML = !notes.length
-              ? `<div class="empty"><b>Noch keine Lernzettel</b>Lade zuerst einen Zettel hoch.<br><a class="btn btn-primary btn-sm" href="#/lernzettel">${ic('upload', 'i-sm')} Zu den Lernzetteln</a></div>`
+              ? `<div class="empty"><b>Noch keine Dateien</b>Lade zuerst eine Datei hoch.<br><a class="btn btn-primary btn-sm" href="#/dateien">${ic('upload', 'i-sm')} Zu den Dateien</a></div>`
               : `<div class="list pick-list">${notes.map((n) => {
                 const sub = PL.subject(n.subjectId);
                 const type = PL.fileType(n.mime, n.ext ? 'x.' + n.ext : n.title);

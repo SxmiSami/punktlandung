@@ -193,6 +193,16 @@
   };
 
   /* ---------- Termin ---------- */
+  /* Dateien, die zu dieser Klausur gehören */
+  function examFilesHtml(ex) {
+    const list = PL.files.notesForExam(ex.id);
+    return `<div class="sec-title" style="margin-top:4px">Dateien zur Klausur<span>${list.length || ''}</span></div>
+      ${list.length ? `<div class="list" style="margin-bottom:8px">${list.map((n) => `<button type="button" class="row row-click" data-action="open-note" data-id="${n.id}" style="padding:8px 4px">
+        <span class="row-main"><span class="row-title" style="display:block">${ic('file', 'i-sm')} ${esc(n.title)}</span><span class="row-sub" style="display:block">${PL.fmtBytes(n.size)}${PL.files.isPublic(n) ? ' · für alle geteilt' : ''}</span></span>${ic('chevron-right', 'i-sm')}</button>`).join('')}</div>`
+        : '<p class="hint" style="margin:0 0 8px">Noch keine Dateien zugeordnet.</p>'}
+      <button type="button" class="btn btn-sm" data-action="add-note" data-exam="${ex.id}" data-subject="${ex.subjectId || ''}" style="margin-bottom:14px">${ic('upload', 'i-sm')} Datei hinzufügen</button>`;
+  }
+
   PL.eventSheet = function (id) {
     const ex = id ? st().events.find((x) => x.id === id) : null;
     const subs = PL.sortedSubjects();
@@ -205,6 +215,7 @@
         <div class="field"><label for="evTitle">Titel</label><input id="evTitle" class="input" value="${esc(f.title)}" maxlength="60" placeholder="z. B. Analysis"></div>
         <div class="field"><label for="evDate">Datum</label><input id="evDate" class="input" type="date" value="${esc(f.date)}"></div>
       </div>
+      ${ex && PL.isExamEvent(ex) && PL.files ? examFilesHtml(ex) : ''}
       <div class="sheet-foot">
         ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
         ${ex && PL.chat && PL.chat.available() ? `<button type="button" class="btn" data-chat style="flex:0 0 auto" title="An einen Chat senden" aria-label="An einen Chat senden">${ic('chat', 'i-sm')}</button>` : ''}

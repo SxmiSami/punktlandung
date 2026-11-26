@@ -1,8 +1,8 @@
-/* Lernzettel – Dateispeicher
+/* Dateien – Dateispeicher
    - Lokal: IndexedDB auf dem jeweiligen Gerät (offline nutzbar)
    - Online: Supabase Storage (Bucket "lernzettel"), Ordner = eigene Nutzer-ID
-   - Teilen: Tabelle note_shares, Empfänger dürfen die Datei dann lesen
-   Die Einträge (Titel, Fach, wo gespeichert) liegen in PL.state.notes und werden normal synchronisiert. */
+   - Teilen: Tabelle note_shares (einzelne Personen) und public_files (für alle)
+   Die Einträge (Titel, Fach, Klausur, wo gespeichert) liegen in PL.state.notes und werden normal synchronisiert. */
 (function () {
   const MB = 1024 * 1024;
   const cfg = Object.assign({ bucket: 'lernzettel', quotaMB: 250, totalMB: 1024, maxFileMB: 25 }, (window.PL_CONFIG || {}).notes || {});
@@ -18,6 +18,8 @@
     usage: { mine: null, total: null },
     shared: [],                   // mit mir geteilt
     myShares: [],                 // von mir geteilt
+    publicFiles: [],              // für alle geteilt (von allen)
+    publicError: null,            // 'setup' = Tabelle public_files fehlt noch
     cloudOrphans: [],             // Dateien in der Cloud ohne Eintrag
     remoteError: null,            // 'setup' = SQL noch nicht ausgeführt
     remoteAt: 0,
@@ -237,11 +239,11 @@
   }
 
   /* ---------- Fehler verständlich machen ---------- */
-  function setupMissing(m) { return /bucket not found|relation .*note_shares|does not exist|could not find the function|schema cache/i.test(m); }
+  function setupMissing(m) { return /bucket not found|relation .*(note_shares|public_files)|does not exist|could not find the function|schema cache/i.test(m); }
   F.err = function (e) {
     const m = (e && (e.message || e.error_description || e.error)) || String(e || '');
     if (e && e.code === 'quota') return m;
-    if (setupMissing(m)) return 'Der Online-Speicher für Lernzettel ist noch nicht eingerichtet (supabase/lernzettel.sql in Supabase ausführen).';
+    if (setupMissing(m)) return 'Der Online-Speicher für Dateien ist noch nicht eingerichtet (supabase/lernzettel.sql in Supabase ausführen).';
     if (/maximum allowed size|payload too large|too large|413/i.test(m)) return `Die Datei ist zu groß für die Cloud (max. ${cfg.maxFileMB} MB).`;
     if (/row-level security|violates|unauthorized|403/i.test(m)) return `Hochladen nicht erlaubt – vermutlich sind deine ${cfg.quotaMB} MB voll.`;
     if (/failed to fetch|network|load failed/i.test(m) || !navigator.onLine) return 'Keine Verbindung. Bist du online?';
@@ -262,7 +264,7 @@
   F.freeMine = () => Math.max(0, F.quota - F.usedMine());
 
   async function upload(note, blob) {
-    if (!F.canCloud()) throw new Error('Melde dich an, um Zettel online zu speichern.');
+    if (!F.canCloud()) throw new Error('Melde dich an, um Dateien online zu speichern.');
     if (blob.size > F.maxFile) throw quotaError(`Die Datei ist zu groß für die Cloud (${PL.fmtBytes(blob.size)}, max. ${cfg.maxFileMB} MB).`);
     if (F.usedMine() + blob.size > F.quota) throw quotaError(`Kein Platz mehr in der Cloud: noch ${PL.fmtBytes(F.freeMine())} von ${cfg.quotaMB} MB frei.`);
     const { error } = await bucket().upload(pathOf(note), blob, { contentType: note.mime || blob.type || 'application/octet-stream', upsert: false, cacheControl: '3600' });
@@ -305,8 +307,8 @@
       i++;
       onProgress && onProgress(i, files.length, file.name);
       const p = await F.prepare(file, opts.compress);
-      const title = (files.length === 1 && opts.title) || baseName(file.name) || 'Lernzettel';
-      const note = { id: PL.uid(), subjectId: opts.subjectId || null, title, ext: PL.fileExt(p.name), mime: p.mime, size: p.blob.size, origSize: p.origSize, created: new Date().toISOString(), cloud: false, devices: [] };
+      const title = (files.length === 1 && opts.title) || baseName(file.name) || 'Datei';
+      const note = { id: PL.uid(), subjectId: opts.subjectId || null, examId: opts.examId || null, title, ext: PL.fileExt(p.name), mime: p.mime, size: p.blob.size, origSize: p.origSize, created: new Date().toISOString(), cloud: false, devices: [] };
       let local = false;
       if (wantLocal) {
         try { await putLocal(note.id, p.blob, { kind: 'own', title, mime: p.mime }); local = true; markDevice(note, true); }
@@ -326,6 +328,10 @@
       st().notes.push(note);
       results.ok++;
       PL.save();
+      if (opts.public) {
+        if (!note.cloud) results.warnings.push(`„${title}“ ist nicht in der Cloud und kann deshalb nicht für alle geteilt werden.`);
+        else { try { await F.publish(note); } catch (e) { results.warnings.push(`„${title}“: ${F.err(e)}`); } }
+      }
     }
     refreshEstimate().then(changed);
     return results;
@@ -336,8 +342,8 @@
     const l = await getLocal(note.id).catch(() => null);
     if (l) return l;
     if (mem.has(note.id)) return mem.get(note.id);
-    if (!note.cloud) throw new Error(note.devices.length ? `Dieser Zettel liegt nur auf: ${note.devices.map(F.deviceName).join(', ')}.` : 'Dieser Zettel ist nirgends mehr gespeichert.');
-    if (!F.canCloud()) throw new Error('Melde dich an, um den Zettel aus der Cloud zu laden.');
+    if (!note.cloud) throw new Error(note.devices.length ? `Diese Datei liegt nur auf: ${note.devices.map(F.deviceName).join(', ')}.` : 'Diese Datei ist nirgends mehr gespeichert.');
+    if (!F.canCloud()) throw new Error('Melde dich an, um die Datei aus der Cloud zu laden.');
     const b = await download(pathOf(note));
     remember(note.id, b);
     return b;
@@ -368,6 +374,7 @@
       }
       await removeCloud(note);
       await unshareAll(note).catch(() => {});
+      await F.unpublish(note).catch(() => {});
     }
     PL.save();
     changed();
@@ -386,13 +393,31 @@
       PL.sync.client.from('note_shares').update({ title: note.title, subject: sub ? sub.name : '', subject_short: sub ? sub.short : '', subject_color: sub ? sub.color : '' })
         .eq('note_id', note.id).eq('owner', userId()).then(() => F.refreshRemote(true));
     }
+    if (F.isPublic(note)) {
+      PL.sync.client.from('public_files').update(publicMeta(note)).eq('note_id', note.id).eq('owner', userId()).then(() => F.refreshRemote(true));
+    }
   };
+
+  /* ---------- Klausur zur Datei ---------- */
+  PL.isExamEvent = (e) => !!e && /Klausur|Test|Abiprüfung/.test(e.type || '');
+  F.exam = (note) => { const e = note && note.examId ? st().events.find((x) => x.id === note.examId) : null; return PL.isExamEvent(e) ? e : null; };
+  F.examLabel = (e) => (e ? `${e.title && e.title !== e.type ? e.title : e.type} · ${PL.fmtDate(e.date)}` : '');
+  /* Klausuren zur Auswahl: passende zum Fach, kommende zuerst */
+  F.examOptions = function (subjectId) {
+    const today = PL.today();
+    const list = st().events.filter((e) => PL.isExamEvent(e) && (!subjectId || e.subjectId === subjectId));
+    const up = list.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+    const past = list.filter((e) => e.date < today).sort((a, b) => b.date.localeCompare(a.date));
+    return up.concat(past);
+  };
+  F.notesForExam = (eventId) => st().notes.filter((n) => n.examId === eventId);
 
   F.remove = async function (note) {
     if (note.cloud) {
       if (!F.canCloud()) throw new Error('Melde dich an, um den Zettel auch aus der Cloud zu löschen.');
       await removeCloud(note);
       await unshareAll(note).catch(() => {});
+      await F.unpublish(note).catch(() => {});
     }
     if (F.local.has(note.id)) await delLocal(note.id);
     st().notes = st().notes.filter((n) => n.id !== note.id);
@@ -439,12 +464,14 @@
         const names = (data || []).filter((o) => o.id).map((o) => `${uid}/${o.name}`);
         if (names.length) await bucket().remove(names);
         await PL.sync.client.from('note_shares').delete().eq('owner', uid);
+        await PL.sync.client.from('public_files').delete().eq('owner', uid);
       } catch (e) { /* offline – Dateien bleiben in der Cloud */ }
     }
     for (const [key, meta] of Array.from(F.local)) {
       if ((meta.user || null) === uid) { try { await delLocal(key); } catch (e) { /* weiter */ } }
     }
     F.myShares = [];
+    F.publicFiles = F.publicFiles.filter((p) => p.owner !== uid);
     mem.clear();
   };
 
@@ -463,7 +490,7 @@
     email = String(email || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Bitte gib eine gültige E-Mail-Adresse ein.');
     if (email.toLowerCase() === ((PL.sync.user || {}).email || '').toLowerCase()) throw new Error('Das ist deine eigene E-Mail-Adresse.');
-    if (!note.cloud) throw new Error('Der Zettel muss dafür in der Cloud gespeichert sein.');
+    if (!note.cloud) throw new Error('Die Datei muss dafür in der Cloud gespeichert sein.');
     const c = PL.sync.client;
     const { data: rid, error: e1 } = await c.rpc('pl_find_user', { email });
     if (e1) throw e1;
@@ -475,7 +502,7 @@
     };
     const { error } = await c.from('note_shares').insert(row);
     if (error) {
-      if (/duplicate|unique/i.test(error.message || '') || error.code === '23505') throw new Error('Mit dieser Person ist der Zettel schon geteilt.');
+      if (/duplicate|unique/i.test(error.message || '') || error.code === '23505') throw new Error('Mit dieser Person ist die Datei schon geteilt.');
       throw error;
     }
     await F.refreshRemote(true);
@@ -494,9 +521,50 @@
     F.myShares = F.myShares.filter((s) => s.note_id !== note.id);
   }
 
-  /* Mit mir geteilte Zettel – auch die, die nur noch lokal liegen */
+  /* ---------- Für alle teilen ---------- */
+  function publicMeta(note) {
+    const sub = PL.subject(note.subjectId);
+    const ex = F.exam(note);
+    return {
+      title: note.title, mime: note.mime || '', size: note.size || 0,
+      subject: sub ? sub.name : '', subject_short: sub ? sub.short : '', subject_color: sub ? sub.color : '',
+      exam_title: ex ? (ex.title && ex.title !== ex.type ? `${ex.type}: ${ex.title}` : ex.type) : '', exam_date: ex ? ex.date : '',
+      owner_name: st().settings.name || '',
+    };
+  }
+  F.isPublic = (note) => F.publicFiles.some((p) => p.note_id === note.id && p.owner === userId());
+  F.publish = async function (note) {
+    if (!F.canCloud()) throw new Error('Melde dich an, um Dateien zu teilen.');
+    if (!note.cloud) throw new Error('Die Datei muss dafür in der Cloud gespeichert sein.');
+    const row = Object.assign({ path: pathOf(note), note_id: note.id }, publicMeta(note));
+    const { error } = await PL.sync.client.from('public_files').insert(row);
+    if (error && !(/duplicate|unique/i.test(error.message || '') || error.code === '23505')) throw error;
+    await F.refreshRemote(true);
+  };
+  F.unpublish = async function (note) {
+    if (!F.isPublic(note)) return;
+    const { error } = await PL.sync.client.from('public_files').delete().eq('note_id', note.id).eq('owner', userId());
+    if (error) throw error;
+    F.publicFiles = F.publicFiles.filter((p) => !(p.note_id === note.id && p.owner === userId()));
+    changed();
+  };
+
+  /* Für alle geteilte Dateien anderer, die man ausgeblendet hat (nur auf diesem Gerät) */
+  const HIDE_KEY = 'punktlandung:hiddenPublic';
+  let hidden = [];
+  try { hidden = JSON.parse(localStorage.getItem(HIDE_KEY)) || []; } catch (e) { hidden = []; }
+  const hide = (path) => { if (!hidden.includes(path)) { hidden.push(path); hidden = hidden.slice(-500); try { localStorage.setItem(HIDE_KEY, JSON.stringify(hidden)); } catch (e) { /* egal */ } } };
+
+  /* Mit mir geteilte und für alle geteilte Dateien – auch die, die nur noch lokal liegen */
   F.sharedList = function () {
     const out = F.shared.map((s) => ({ key: sharedKey(s), share: s, here: F.local.has(sharedKey(s)), gone: false }));
+    const uid = userId();
+    const paths = new Set(F.shared.map((s) => s.path));
+    F.publicFiles.forEach((p) => {
+      if (p.owner === uid || paths.has(p.path) || hidden.includes(p.path)) return;
+      const key = sharedKey(p);
+      out.push({ key, share: p, here: F.local.has(key), gone: false, isPublic: true });
+    });
     const keys = new Set(out.map((x) => x.key));
     F.local.forEach((m, key) => {
       if (m.kind === 'shared' && !keys.has(key) && (m.user || null) === userId()) {
@@ -510,7 +578,7 @@
     const l = await getLocal(item.key).catch(() => null);
     if (l) return l;
     if (mem.has(item.key)) return mem.get(item.key);
-    if (item.gone) throw new Error('Dieser Zettel wird nicht mehr geteilt.');
+    if (item.gone) throw new Error('Diese Datei wird nicht mehr geteilt.');
     const b = await download(item.share.path);
     remember(item.key, b);
     return b;
@@ -525,7 +593,8 @@
     refreshEstimate().then(changed);
   };
   F.leaveShared = async function (item) {
-    if (!item.gone && item.share.id) await F.unshare(item.share.id);
+    if (item.isPublic) hide(item.share.path);
+    else if (!item.gone && item.share.id) await F.unshare(item.share.id);
     if (F.local.has(item.key)) await delLocal(item.key);
     mem.delete(item.key);
     changed();
@@ -557,6 +626,10 @@
         // Ohne Eintrag und älter als 2 Min. (frische Uploads werden gerade erst eingetragen)
         const recent = Date.now() - 2 * 60 * 1000;
         F.cloudOrphans = (list.data || []).filter((o) => o.id && !ids.has(o.name) && new Date(o.created_at || 0).getTime() < recent);
+        // Für alle geteilt: eigene Abfrage, damit es ohne die neue Tabelle weiter funktioniert
+        const pub = await c.from('public_files').select('*').order('created_at', { ascending: false }).limit(1000);
+        if (pub.error) F.publicError = setupMissing(pub.error.message || '') ? 'setup' : 'error';
+        else { F.publicError = null; F.publicFiles = pub.data || []; }
         F.remoteAt = Date.now();
       } catch (e) {
         F.remoteError = navigator.onLine ? 'error' : null;
@@ -568,14 +641,14 @@
     return remoteBusy;
   };
   function snapshot() {
-    return JSON.stringify([F.usage, F.remoteError, F.shared.map((s) => s.id + s.title), F.myShares.map((s) => s.id + s.title), F.cloudOrphans.length]);
+    return JSON.stringify([F.usage, F.remoteError, F.publicError, F.shared.map((s) => s.id + s.title), F.myShares.map((s) => s.id + s.title), F.publicFiles.map((p) => p.id + p.title + p.subject + p.exam_date), F.cloudOrphans.length]);
   }
 
   /* ---------- Öffnen / Sichern ---------- */
   const touch = () => window.matchMedia('(pointer: coarse)').matches;
   F.fileName = function (title, mime) {
     const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'application/pdf': 'pdf', 'text/plain': 'txt' }[mime] || '';
-    const safe = String(title || 'Lernzettel').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
+    const safe = String(title || 'Datei').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
     return ext && !new RegExp('\\.' + ext + '$', 'i').test(safe) ? safe + '.' + ext : safe;
   };
   /* Für PDFs am PC ein Fenster vorab öffnen (sonst blockiert der Browser das Popup nach dem Laden) */

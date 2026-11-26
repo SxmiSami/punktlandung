@@ -152,7 +152,7 @@
     if (!F || !F.sharedList) return [];
     const list = F.sharedList().filter((x) => !x.gone).map((x) => ({
       id: 'share:' + x.key, kind: 'share', key: x.key, at: x.share.created_at || nowIso(),
-      title: x.share.title || 'Lernzettel', sender: x.share.owner_name || x.share.owner_email || 'Freund',
+      title: x.share.title || 'Datei', sender: x.share.owner_name || x.share.owner_email || 'Freund',
       subject: x.share.subject_short || '', mime: x.share.mime,
     }));
     if (!store.sharesInit && F.remoteAt > 0) {
@@ -320,11 +320,11 @@
         const saved = store.saved[attKey(a)] && PL.files.note(store.saved[attKey(a)]);
         return `<div class="row feed-file">
           <span class="note-tile" style="--c:${t.color}">${ic(t.icon)}<b>${esc(t.label)}</b></span>
-          <span class="row-main"><span class="row-title" style="display:block">${esc(a.name)}</span><span class="row-sub" style="display:block" data-fmsg="${i}">${saved ? 'Bei deinen Lernzetteln gespeichert' : esc(t.name)}</span></span>
+          <span class="row-main"><span class="row-title" style="display:block">${esc(a.name)}</span><span class="row-sub" style="display:block" data-fmsg="${i}">${saved ? 'Bei deinen Dateien gespeichert' : esc(t.name)}</span></span>
           <span class="feed-file-btns">
             <button type="button" class="btn btn-sm" data-fopen="${i}" title="Öffnen">${ic('eye', 'i-sm')}<span class="hide-mobile">Öffnen</span></button>
-            ${saved ? `<button type="button" class="btn btn-sm" data-fnote="${esc(saved.id)}" title="Lernzettel öffnen">${ic('file', 'i-sm')}</button>`
-              : `<button type="button" class="btn btn-sm btn-primary" data-fsave="${i}" title="Als Lernzettel speichern">${ic('download', 'i-sm')}<span class="hide-mobile">Als Lernzettel</span></button>`}
+            ${saved ? `<button type="button" class="btn btn-sm" data-fnote="${esc(saved.id)}" title="Datei öffnen">${ic('file', 'i-sm')}</button>`
+              : `<button type="button" class="btn btn-sm btn-primary" data-fsave="${i}" title="Bei Dateien speichern">${ic('download', 'i-sm')}<span class="hide-mobile">Bei Dateien</span></button>`}
           </span></div>`;
       }).join('')}</div></div>`;
   }
@@ -356,7 +356,7 @@
           const note = st().notes.find((n) => !before.has(n.id));
           if (!r.ok || !note) throw new Error(r.warnings[0] || 'Speichern hat nicht geklappt.');
           store.saved[attKey(a)] = note.id; persist();
-          PL.toast(`„${baseName(a.name)}“ bei den Lernzetteln gespeichert`);
+          PL.toast(`„${baseName(a.name)}“ bei den Dateien gespeichert`);
           reopen();
         } catch (e) { say(sh, b.dataset.fsave, e.message); b.disabled = false; b.innerHTML = old; }
       };
@@ -392,7 +392,7 @@
         ${x.remark ? `<div class="feed-text muted">${linkify(x.remark)}</div>` : ''}
         ${meta([['Fach', sub], ['Aufgegeben', x.date && PL.fmtDate(x.date)], ['Fällig', x.due && `${PL.fmtDate(x.due)} (${PL.relDays(PL.daysUntil(x.due))})`], ['Lehrkraft', x.teacher]])}
         ${filesHtml(x.files)}
-        ${x.files && x.files.length ? `<p class="hint" style="margin:4px 0 0">${ic('info', 'i-sm')} „Als Lernzettel“ legt die Datei bei deinen Lernzetteln${sub ? ' in ' + esc(sub) : ''} ab.</p>` : ''}`;
+        ${x.files && x.files.length ? `<p class="hint" style="margin:4px 0 0">${ic('info', 'i-sm')} „Bei Dateien“ legt die Datei bei deinen Dateien${sub ? ' in ' + esc(sub) : ''} ab.</p>` : ''}`;
     } else if (x.kind === 'news') {
       body = `<div class="feed-text">${linkify(x.text)}</div>${filesHtml(x.files)}`;
     } else if (x.kind === 'exam') {

@@ -10,7 +10,8 @@
 
   function route() {
     const h = (location.hash || '#/').replace(/^#\/?/, '');
-    const [name, arg] = h.split('/');
+    const [n0, arg] = h.split('/');
+    const name = n0 === 'lernzettel' ? 'dateien' : n0;  // alter Link
     return { name: name || '', arg };
   }
 
@@ -42,7 +43,7 @@
     // Schwebender +-Knopf: passt sich der aktuellen Seite an
     const fab = document.getElementById('fab');
     const fabAction = r.name === 'aufgaben' ? ['add-task', 'Aufgabe hinzufügen']
-      : r.name === 'lernzettel' ? ['add-note', 'Lernzettel hochladen']
+      : r.name === 'dateien' ? ['add-note', 'Datei hochladen']
       : r.name === 'chat' ? ['new-chat', 'Neuer Chat']
       : (r.name === 'plan' && PL.ui.planMode === 'week') ? ['add-lesson', 'Stunde eintragen']
       : (r.name === 'termine' || r.name === 'plan') ? ['add-event', 'Termin hinzufügen']
@@ -75,7 +76,7 @@
       case 'termine': html = PL.views.plan('events'); break;
       case 'plan': html = PL.views.plan(); break;
       case 'aufgaben': html = PL.views.tasks(); break;
-      case 'lernzettel': html = PL.views.notes(); break;
+      case 'dateien': html = PL.views.notes(); break;
       case 'chat': html = PL.views.chat(r.arg); break;
       case 'neu': html = PL.views.feed(); break;
       case 'einstellungen': html = PL.views.settings(); break;

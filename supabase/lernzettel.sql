@@ -128,3 +128,66 @@ create policy "Lernzettel löschen" on storage.objects
   for delete to authenticated using (
     bucket_id = 'lernzettel' and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- 5) Für alle geteilte Dateien (seit 0.9.0)
+--    Jede angemeldete Person sieht diese Liste und darf die Dateien lesen.
+create table if not exists public.public_files (
+  id              uuid primary key default gen_random_uuid(),
+  owner           uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  path            text not null unique,   -- <owner-id>/<datei-id> im Bucket
+  note_id         text not null,
+  title           text not null default '',
+  subject         text not null default '',
+  subject_short   text not null default '',
+  subject_color   text not null default '',
+  exam_title      text not null default '',
+  exam_date       text not null default '',
+  mime            text not null default '',
+  size            bigint not null default 0,
+  owner_name      text not null default '',
+  owner_email     text not null default '',
+  created_at      timestamptz not null default now()
+);
+
+create or replace function public.pl_public_file_fill()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  new.owner_email := coalesce((select u.email from auth.users u where u.id = new.owner), '');
+  return new;
+end;
+$$;
+drop trigger if exists pl_public_file_fill on public.public_files;
+create trigger pl_public_file_fill before insert or update on public.public_files
+  for each row execute function public.pl_public_file_fill();
+
+revoke all on public.public_files from anon;
+grant select, insert, update, delete on public.public_files to authenticated;
+alter table public.public_files enable row level security;
+
+drop policy if exists "Öffentliche Dateien sehen" on public.public_files;
+drop policy if exists "Eigene Dateien veröffentlichen" on public.public_files;
+drop policy if exists "Eigene Veröffentlichung ändern" on public.public_files;
+drop policy if exists "Eigene Veröffentlichung beenden" on public.public_files;
+
+create policy "Öffentliche Dateien sehen" on public.public_files
+  for select to authenticated using (true);
+create policy "Eigene Dateien veröffentlichen" on public.public_files
+  for insert to authenticated with check (auth.uid() = owner and split_part(path, '/', 1) = auth.uid()::text);
+create policy "Eigene Veröffentlichung ändern" on public.public_files
+  for update to authenticated using (auth.uid() = owner) with check (auth.uid() = owner and split_part(path, '/', 1) = auth.uid()::text);
+create policy "Eigene Veröffentlichung beenden" on public.public_files
+  for delete to authenticated using (auth.uid() = owner);
+
+-- Leseregel für die Dateien erweitern: auch für alle geteilte Dateien
+drop policy if exists "Lernzettel lesen" on storage.objects;
+create policy "Lernzettel lesen" on storage.objects
+  for select to authenticated using (
+    bucket_id = 'lernzettel'
+    and (
+      (storage.foldername(name))[1] = auth.uid()::text
+      or exists (select 1 from public.note_shares s where s.path = storage.objects.name and s.recipient = auth.uid())
+      or exists (select 1 from public.public_files p where p.path = storage.objects.name)
+    )
+  );

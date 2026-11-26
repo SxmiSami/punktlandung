@@ -3,6 +3,15 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.9.0
+- **Lernzettel heißt jetzt „Dateien“** (alte Links auf `#/lernzettel` funktionieren weiter)
+- Für jede Datei festlegen: **Fach**, **Klausur** (passend zum Fach, kommende zuerst) und ob sie **für alle geteilt** wird – beim Hochladen oder später in den Details
+- **Für alle teilen**: Alle mit einem Konto in Punktlandung sehen die Datei unter „Von anderen“ (mit Fach und Klausur) und in den Neuigkeiten. Einzelne Personen gehen weiter über „An Personen“
+- Dateien von anderen lassen sich aus der eigenen Liste ausblenden
+- Filter „Zu Klausuren“ und „Geteilt“; Klausuren stehen als Schild an der Datei
+- Im Klausurtermin stehen die zugeordneten Dateien, mit „Datei hinzufügen“ direkt für diese Klausur hochladen
+- Dafür einmal `supabase/lernzettel.sql` in Supabase neu ausführen (neue Tabelle `public_files`)
+
 ## 0.8.1
 - **Passwort ändern**: Unter Einstellungen → Konto & Synchronisierung. Zur Sicherheit wird zuerst das aktuelle Passwort abgefragt, das neue gibst du zweimal ein
 - Aktuelles Passwort vergessen? Von dort aus lässt sich direkt ein Link zum Zurücksetzen schicken
