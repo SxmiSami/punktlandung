@@ -355,7 +355,7 @@
     const win = F.prepWindow(mime);
     const old = btn && btn.innerHTML;
     if (btn) { btn.disabled = true; btn.textContent = 'Lädt …'; }
-    try { F.show(await getBlob(), title, win); }
+    try { F.show(await getBlob(), title, win, mime); }
     catch (e) { if (win) win.close(); PL.toast(F.err(e)); }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = old; } }
   }

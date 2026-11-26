@@ -10,6 +10,7 @@ Eine Noten-App fürs Abitur, die am PC und auf dem Handy läuft (als installierb
 - **Neuigkeiten:** Feed mit Dateien (Lernzetteln) und Hausaufgaben aus Untis, Mitteilungen, Klausuren, Ausfällen und geteilten Zetteln – Untis-Dateien mit einem Tipp als Lernzettel speichern
 - **Aufgaben:** Hausaufgaben mit Fälligkeit (z. B. „bis zur nächsten Stunde“) zum Abhaken
 - **Lernzettel:** Fotos und PDFs pro Fach – in der Cloud, nur auf dem Gerät oder beides, mit Speicheranzeige und Teilen mit Freunden
+- **OneNote:** Pro Fach einen Abschnitt verknüpfen und öffnen; mit dem Schulkonto die Seiten in der App sehen, neue Seiten in den Neuigkeiten und Seiten als Datei speichern
 - **Chat:** Einzel- und Gruppenchats mit Freunden, die ein Konto haben – Nachrichten kommen live an, Lernzettel und Klausurtermine lassen sich direkt in den Chat schicken
 - Hell- und Dunkelmodus, funktioniert offline, Backup als JSON-Datei (Export/Import)
 

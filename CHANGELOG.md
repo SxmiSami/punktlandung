@@ -3,6 +3,17 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.10.0
+- **OneNote-Verknüpfung**: Bei jedem Fach einen Abschnitt aus OneNote verknüpfen, z. B. aus dem Kursnotizbuch im Team, und mit einem Tipp in der OneNote-App oder im Browser öffnen
+- Ohne Anmeldung: Link zum Abschnitt einfügen („Link zu Abschnitt kopieren“ in OneNote)
+- **Mit dem Schulkonto angemeldet** (Einstellungen → OneNote):
+  - Abschnitt aus einer Liste wählen (eigene Notizbücher und die deiner Teams). Was zum Fach passt, steht oben
+  - Die **Seiten des Abschnitts** stehen direkt im Fach, die zuletzt geänderten zuerst
+  - **Neue Seiten** (z. B. von Lehrkräften in der Inhaltsbibliothek) erscheinen in den **Neuigkeiten**
+  - Eine Seite **hier ansehen** oder **bei den Dateien speichern** (mit Bildern, ohne Stift-Handschrift)
+- Gespeicherte Seiten (HTML) öffnen sich in der App statt als Download
+- Einrichtung: SYNC-EINRICHTEN.md, Schritt 8 (App-Registrierung bei Microsoft). Vielleicht muss die IT der Schule die App einmal freigeben
+
 ## 0.9.1
 - **Synchronisierung repariert**: Ein Gerät mit altem Stand (z. B. das iPad nach Änderungen am PC) konnte beim Öffnen seinen veralteten Stand hochladen und damit die neuen Daten überschreiben. Jetzt werden die Stände **zusammengeführt** – Änderungen von beiden Geräten bleiben erhalten (neue/geänderte/gelöschte Noten, Fächer, Termine, Aufgaben, Dateien, Einstellungen). Nur wenn dasselbe Feld auf beiden Geräten verschieden geändert wurde, gilt die neuere Änderung
 - Hochgeladen wird nur noch, wenn im Konto kein neuerer Stand liegt – sonst holt die App ihn zuerst ab und führt zusammen (auch wenn zwei Geräte gleichzeitig speichern)

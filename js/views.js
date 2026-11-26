@@ -333,6 +333,7 @@
 
       <div class="split">${list(ks, 'K', 'Klausuren')}${list(os, 'S', 'Sonstige Mitarbeit')}</div>
       ${PL.subjectNotesCard(sub)}
+      ${PL.onenoteCard ? PL.onenoteCard(sub) : ''}
     </div>`;
   };
 
@@ -536,6 +537,8 @@
           <div class="opt-row"><div><div class="t">Stundenzeiten</div><div class="d">${s.periods.length} Stunden · ${esc(s.periods[0].start)} bis ${esc(s.periods[s.periods.length - 1].end)}</div></div><button class="btn btn-sm" data-action="edit-periods">${ic('edit', 'i-sm')} Bearbeiten</button></div>
           ${PL.untis ? PL.untis.settingsRow() : ''}
         </section>
+
+        ${PL.onenote ? PL.onenote.settingsCard() : ''}
 
         ${accountCard()}
 

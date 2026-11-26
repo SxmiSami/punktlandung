@@ -49,8 +49,9 @@
     { name: 'Video', label: 'MP4', color: '#0EA5E9', icon: 'video', ext: ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi', 'wmv'], mime: /^video\// },
     { name: 'E-Book', label: 'EPUB', color: '#14B8A6', icon: 'book', ext: ['epub', 'mobi', 'azw3'], mime: /epub|mobipocket/ },
     { name: 'Notizen', label: 'NOTE', color: '#7C3AED', icon: 'file', ext: ['goodnotes', 'note', 'notability', 'one', 'onepkg', 'xopp'], mime: /onenote/ },
+    { name: 'Seite', label: 'HTML', color: '#7C3AED', icon: 'notebook', ext: ['html', 'htm'], mime: /^text\/html/ },
     { name: 'Text', label: 'TXT', color: '#64748B', icon: 'file', ext: ['txt', 'md', 'markdown', 'log'], mime: /^text\/(plain|markdown)/ },
-    { name: 'Code', label: 'CODE', color: '#0F766E', icon: 'code', ext: ['html', 'htm', 'css', 'js', 'ts', 'json', 'xml', 'py', 'java', 'c', 'cpp', 'h', 'cs', 'php', 'sql', 'sh', 'ipynb', 'tex'], mime: /json|javascript|html|xml|x-python|x-java|x-tex|x-sh/ },
+    { name: 'Code', label: 'CODE', color: '#0F766E', icon: 'code', ext: ['css', 'js', 'ts', 'json', 'xml', 'py', 'java', 'c', 'cpp', 'h', 'cs', 'php', 'sql', 'sh', 'ipynb', 'tex'], mime: /json|javascript|xml|x-python|x-java|x-tex|x-sh/ },
     { name: 'Schrift', label: 'FONT', color: '#A16207', icon: 'file', ext: ['ttf', 'otf', 'woff', 'woff2'], mime: /^font\// },
   ];
   const MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'image/svg+xml': 'svg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/wav': 'wav', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
@@ -73,6 +74,7 @@
     const m = mime || '';
     if (m.startsWith('image/')) return 'img';
     if (m === 'application/pdf' || /\.pdf$/i.test(name || '')) return 'pdf';
+    if (m.startsWith('text/html') || /\.html?$/i.test(name || '')) return 'html';
     return 'file';
   };
 
@@ -231,7 +233,7 @@
   PL.guessMime = (name) => guessMime(name);
   function guessMime(name) {
     const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1];
-    const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', gif: 'image/gif', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv',
+    const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', gif: 'image/gif', txt: 'text/plain', html: 'text/html', htm: 'text/html', md: 'text/markdown', csv: 'text/csv',
       doc: 'application/msword', xls: 'application/vnd.ms-excel', ppt: 'application/vnd.ms-powerpoint', odt: 'application/vnd.oasis.opendocument.text', ods: 'application/vnd.oasis.opendocument.spreadsheet', odp: 'application/vnd.oasis.opendocument.presentation', rtf: 'application/rtf',
       zip: 'application/zip', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed', mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', mp4: 'video/mp4', mov: 'video/quicktime', epub: 'application/epub+zip', json: 'application/json',
       docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
@@ -647,16 +649,18 @@
   /* ---------- Öffnen / Sichern ---------- */
   const touch = () => window.matchMedia('(pointer: coarse)').matches;
   F.fileName = function (title, mime) {
-    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'application/pdf': 'pdf', 'text/plain': 'txt' }[mime] || '';
+    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'application/pdf': 'pdf', 'text/plain': 'txt', 'text/html': 'html' }[mime] || '';
     const safe = String(title || 'Datei').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
     return ext && !new RegExp('\\.' + ext + '$', 'i').test(safe) ? safe + '.' + ext : safe;
   };
   /* Für PDFs am PC ein Fenster vorab öffnen (sonst blockiert der Browser das Popup nach dem Laden) */
-  F.prepWindow = (mime) => (PL.fileKind(mime) !== 'img' && !touch() ? window.open('about:blank', '_blank') : null);
-  F.show = function (blob, title, win) {
+  F.prepWindow = (mime) => (!['img', 'html'].includes(PL.fileKind(mime)) && !touch() ? window.open('about:blank', '_blank') : null);
+  F.show = function (blob, title, win, mime) {
     const url = URL.createObjectURL(blob);
     setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     if (PL.fileKind(blob.type) === 'img') { if (win) win.close(); PL.imageViewer(url, title); return; }
+    // Seiten (z. B. aus OneNote) in der App zeigen, abgeschottet (ohne Skripte)
+    if (PL.fileKind(mime || blob.type, title) === 'html' && PL.htmlViewer) { if (win) win.close(); blob.text().then((t) => PL.htmlViewer(t, title)); return; }
     if (win) { win.location.href = url; return; }
     const a = document.createElement('a');
     a.href = url; a.download = F.fileName(title, blob.type); a.target = '_blank'; a.rel = 'noopener';
