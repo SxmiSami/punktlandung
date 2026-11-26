@@ -34,7 +34,20 @@ Unter **Widget bearbeiten → Parameter** kannst du eintragen:
 | `termine` | nächste 4 Termine | Abischnitt + 4 Termine | Abischnitt + 10 Termine |
 | `aufgaben` | nächste 4 Aufgaben | Abischnitt + 4 Aufgaben | Abischnitt + 10 Aufgaben |
 
-Auf dem Sperrbildschirm: rund = Abischnitt, rechteckig = Abischnitt, nächste Prüfung und Anzahl offener Aufgaben, über der Uhr = eine Zeile.
+| `stundenplan` | aktuelle bzw. nächste Stunde + Knopf „+ Hausaufgabe“ | Stundenplan des Tages + Knopf | Stundenplan + fällige Hausaufgaben + Knopf |
+
+Auf dem Sperrbildschirm: rund = Abischnitt, rechteckig = Abischnitt, nächste Prüfung und Anzahl offener Aufgaben, über der Uhr = eine Zeile. Mit `stundenplan` zeigen sie stattdessen die aktuelle bzw. nächste Stunde.
+
+## Stundenplan-Widget mit Hausaufgaben
+
+Leg ein zweites Scriptable-Widget an, wähle wieder „Punktlandung“ und trag als Parameter `stundenplan` ein.
+
+- Es zeigt den Stundenplan von **heute**, die laufende Stunde ist hervorgehoben. Ab etwa 20 Minuten nach Schulschluss und am Wochenende zeigt es den **nächsten Schultag**. A/B-Wochen werden berücksichtigt.
+- **„+ Hausaufgabe · M“** gilt für das Fach, das gerade dran ist oder gerade zu Ende ging. Ein Tipp öffnet Scriptable: Du schreibst auf, was zu tun ist, und wählst **bis nächste Stunde**, **übernächste Stunde**, ein anderes Datum oder ohne Datum. Die Hausaufgabe landet direkt in deinem Konto und erscheint beim nächsten Abgleich in Punktlandung.
+- Beim mittleren und großen Widget kannst du auch auf eine **einzelne Stunde** tippen, um eine Hausaufgabe für dieses Fach einzutragen.
+- Läuft gerade kein Fach, fragt Scriptable zuerst nach dem Fach. Die Fächer von heute stehen dann oben.
+- Das Widget zeigt deinen eingetragenen Stundenplan. Ausfälle und Raumänderungen aus Untis sieht es nicht.
+- Direkt im Widget tippen und schreiben lässt iOS bei Scriptable nicht zu, deshalb öffnet sich kurz Scriptable.
 
 ## Gut zu wissen
 

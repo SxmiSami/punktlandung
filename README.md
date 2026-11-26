@@ -11,7 +11,7 @@ Eine Noten-App fürs Abitur, die am PC und auf dem Handy läuft (als installierb
 - **Aufgaben:** Hausaufgaben mit Fälligkeit (z. B. „bis zur nächsten Stunde“) zum Abhaken, auf Wunsch mit Link zur passenden OneNote-Seite
 - **Lernzettel:** Fotos und PDFs pro Fach – in der Cloud, nur auf dem Gerät oder beides, mit Speicheranzeige und Teilen mit Freunden
 - **Chat:** Einzel- und Gruppenchats mit Freunden, die ein Konto haben – Nachrichten kommen live an, Lernzettel und Klausurtermine lassen sich direkt in den Chat schicken
-- **iPhone-Widget:** Abischnitt, nächste Termine und offene Aufgaben auf dem Home- und Sperrbildschirm (über die App Scriptable, siehe [widget/WIDGET-EINRICHTEN.md](widget/WIDGET-EINRICHTEN.md))
+- **iPhone-Widget:** Abischnitt, nächste Termine und offene Aufgaben auf dem Home- und Sperrbildschirm, dazu ein Stundenplan-Widget, über das du direkt eine Hausaufgabe fürs aktuelle Fach einträgst (über die App Scriptable, siehe [widget/WIDGET-EINRICHTEN.md](widget/WIDGET-EINRICHTEN.md))
 - Hell- und Dunkelmodus, funktioniert offline, Backup als JSON-Datei (Export/Import)
 
 ## Rechenregeln

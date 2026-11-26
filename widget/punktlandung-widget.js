@@ -11,7 +11,9 @@
      (leer)    Standard: Abischnitt + Termine/Aufgaben je nach Größe
      abi       nur Abischnitt
      termine   nächste Termine
-     aufgaben  offene Aufgaben */
+     aufgaben  offene Aufgaben
+     stundenplan  Stundenplan von heute (bzw. dem nächsten Schultag) mit „+ Hausaufgabe“
+                  für das aktuelle Fach – ein Tipp öffnet Scriptable zum Eintragen */
 
 const SUPABASE_URL = 'https://quurwakilvvunjhcbmzz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_jvnIIUVtss5IG27f01JB4Q_5DX3o3SK'; // öffentlicher Schlüssel, wie in js/config.js
@@ -54,9 +56,19 @@ async function authRequest(grant, body) {
     access_token: res.access_token,
     refresh_token: res.refresh_token,
     expires_at: res.expires_at || Math.floor(Date.now() / 1000) + (res.expires_in || 3600),
+    user_id: (res.user && res.user.id) || jwtSub(res.access_token),
   };
   Keychain.set(SESSION_KEY, JSON.stringify(session));
   return session;
+}
+
+/* Nutzer-ID aus dem Zugangs-Token (für ältere Anmeldungen ohne gespeicherte ID) */
+function jwtSub(token) {
+  try {
+    let b = String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    return JSON.parse(Data.fromBase64String(b).toRawString()).sub || null;
+  } catch (e) { return null; }
 }
 
 function loadSession() {
@@ -354,6 +366,7 @@ function messageWidget(title, text) {
 }
 
 function buildWidget(data, family, param) {
+  if (/^(stundenplan|plan)$/i.test((param || '').trim())) return buildTimetableWidget(data, family);
   const st = data.state || {};
   const T = calcTotal(st);
   const U = upcoming(st);
@@ -437,6 +450,337 @@ function buildWidget(data, family, param) {
   return w;
 }
 
+/* ---------------- Stundenplan (gleiche Logik wie js/plan.js) ---------------- */
+const WD_LONG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+const toMin = (t) => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+const nowMin = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+const subjectsSorted = (st) => (st.subjects || []).slice().sort((a, b) => ((b.lk ? 1 : 0) - (a.lk ? 1 : 0)) || String(a.name).localeCompare(String(b.name), 'de'));
+
+function weekType(st, d) {
+  const s = st.settings || {};
+  if (!s.abWeeks || !s.abRef) return null;
+  const diff = Math.round((mondayOf(d) - mondayOf(parseDate(s.abRef))) / (7 * 864e5));
+  return ((diff % 2) + 2) % 2 === 0 ? 'A' : 'B';
+}
+
+/* Unterrichtsblöcke eines Tages (Doppelstunden zusammengefasst) */
+function blocksOn(st, date) {
+  const day = (date.getDay() + 6) % 7;
+  if (day > 4) return [];
+  const wt = weekType(st, date);
+  const subj = (id) => (st.subjects || []).find((s) => s.id === id);
+  const periods = (st.settings && st.settings.periods) || [];
+  const ls = (st.lessons || [])
+    .filter((l) => l.day === day && (!l.week || !wt || l.week === wt) && subj(l.subjectId))
+    .sort((a, b) => a.period - b.period);
+  const blocks = [];
+  ls.forEach((l) => {
+    const last = blocks[blocks.length - 1];
+    if (last && last.subjectId === l.subjectId && (last.room || '') === (l.room || '') && last.to === l.period - 1) last.to = l.period;
+    else if (!last || last.to < l.period) blocks.push({ subjectId: l.subjectId, room: l.room || '', from: l.period, to: l.period });
+  });
+  blocks.forEach((b) => {
+    b.start = (periods[b.from - 1] || {}).start || '';
+    b.end = (periods[b.to - 1] || {}).end || '';
+    b.sub = subj(b.subjectId);
+  });
+  return blocks;
+}
+
+/* Die nächsten Unterrichtstage eines Fachs (ab morgen) */
+function nextLessons(st, subjectId, count) {
+  const out = [];
+  for (let i = 1; i <= 42 && out.length < count; i++) {
+    const d = addDays(new Date(), i);
+    const b = blocksOn(st, d).find((x) => x.subjectId === subjectId);
+    if (b) out.push({ date: isoDate(d), block: b });
+  }
+  return out;
+}
+
+/* Stunde, die gerade läuft – oder die vor höchstens 20 Minuten zu Ende ging */
+function currentBlock(blocks, now) {
+  const live = blocks.find((b) => toMin(b.start) <= now && now <= toMin(b.end));
+  if (live) return live;
+  const i = blocks.map((b) => toMin(b.end) < now).lastIndexOf(true);
+  if (i < 0) return null;
+  const next = blocks[i + 1];
+  const until = Math.min(toMin(blocks[i].end) + 20, next ? toMin(next.start) : Infinity);
+  return now < until ? blocks[i] : null;
+}
+
+/* Welcher Tag gezeigt wird: heute bis kurz nach Schulschluss, danach der nächste Schultag */
+function planDay(st) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const now = nowMin();
+  const tb = blocksOn(st, today);
+  if (tb.length && now <= toMin(tb[tb.length - 1].end) + 20) return { date: today, blocks: tb, offset: 0 };
+  for (let i = 1; i <= 7; i++) {
+    const d = addDays(today, i), b = blocksOn(st, d);
+    if (b.length) return { date: d, blocks: b, offset: i };
+  }
+  return { date: today, blocks: [], offset: 0 };
+}
+
+/* Für welches Fach der Hausaufgaben-Knopf gilt: aktuelle Stunde, sonst die zuletzt begonnene von heute */
+function homeworkTarget(st) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const blocks = blocksOn(st, today), now = nowMin();
+  const cur = currentBlock(blocks, now);
+  if (cur) return cur;
+  const started = blocks.filter((b) => toMin(b.start) <= now);
+  return started.length && now <= toMin(started[started.length - 1].end) + 90 ? started[started.length - 1] : null;
+}
+
+const haUrl = (subjectId) => `scriptable:///run/${encodeURIComponent(Script.name())}?ha=${encodeURIComponent(subjectId || '')}`;
+const dayTitle = (P) => (P.offset === 0 ? 'Heute' : P.offset === 1 ? 'Morgen' : WD_LONG[P.date.getDay()]);
+
+function haButton(stack, target, size) {
+  const b = stack.addStack();
+  b.layoutHorizontally();
+  b.centerAlignContent();
+  b.backgroundColor = C.accent;
+  b.cornerRadius = 9;
+  b.setPadding(4, 8, 4, 8);
+  b.url = haUrl(target && target.subjectId);
+  addLabel(b, `+ Hausaufgabe${target && target.sub ? ' · ' + target.sub.short : ''}`, size, Color.white(), { font: Font.boldSystemFont(size) });
+  return b;
+}
+
+function lessonRow(stack, b, state, size, tasksDue) {
+  const r = stack.addStack();
+  r.layoutHorizontally();
+  r.centerAlignContent();
+  r.spacing = 6;
+  r.url = haUrl(b.subjectId);
+  if (state === 'now') { r.backgroundColor = C.card; r.cornerRadius = 7; r.setPadding(3, 5, 3, 5); }
+  else r.setPadding(1, 5, 1, 5);
+  const dim = state === 'past';
+  const time = r.addStack();
+  time.size = new Size(size * 3, 0);
+  addLabel(time, b.start, size - 1, dim ? C.muted : C.text2, { font: Font.mediumMonospacedSystemFont(size - 1) });
+  const bar = r.addStack();
+  bar.size = new Size(3, size + 3);
+  bar.cornerRadius = 1.5;
+  bar.backgroundColor = new Color(b.sub && b.sub.color ? b.sub.color : '#64748B', dim ? 0.4 : 1);
+  addLabel(r, b.sub ? b.sub.name : '?', size, dim ? C.muted : C.text, { font: state === 'now' ? Font.boldSystemFont(size) : Font.mediumSystemFont(size), scale: 0.8 });
+  if (tasksDue) addLabel(r, `📝${tasksDue > 1 ? tasksDue : ''}`, size - 2, C.text2);
+  r.addSpacer();
+  if (b.room) addLabel(r, b.room, size - 1, dim ? C.muted : C.text2);
+  return r;
+}
+
+function buildTimetableWidget(data, family) {
+  const st = data.state || {};
+  const P = planDay(st);
+  const target = homeworkTarget(st);
+  const now = nowMin();
+  const w = new ListWidget();
+  w.url = haUrl(target && target.subjectId);
+
+  // neu zeichnen, wenn die nächste Stunde beginnt oder endet (spätestens nach 30 Min.)
+  let next = now + 30;
+  if (P.offset === 0) P.blocks.forEach((b) => [toMin(b.start), toMin(b.end) + 1, toMin(b.end) + 21].forEach((m) => { if (m > now && m < next) next = m; }));
+  const at = new Date(); at.setHours(0, next, 0, 0);
+  w.refreshAfterDate = at;
+
+  const stateOf = (b) => {
+    if (P.offset !== 0) return '';
+    if (toMin(b.start) <= now && now <= toMin(b.end)) return 'now';
+    return toMin(b.end) < now ? 'past' : '';
+  };
+  const live = P.blocks.find((b) => stateOf(b) === 'now');
+  const upcomingBlock = P.blocks.find((b) => stateOf(b) === '' && (P.offset !== 0 || toMin(b.start) > now));
+  const focus = live || upcomingBlock || null;
+  const lessonsText = (b) => (b ? `${b.sub ? b.sub.short : '?'}${b.room ? ' · ' + b.room : ''}` : '');
+
+  /* Sperrbildschirm */
+  if (family === 'accessoryInline') {
+    w.addText(live ? `${lessonsText(live)} bis ${live.end}` : upcomingBlock ? `${dayTitle(P)} ${upcomingBlock.start}: ${lessonsText(upcomingBlock)}` : 'Kein Unterricht');
+    return w;
+  }
+  if (family === 'accessoryCircular') {
+    w.addAccessoryWidgetBackground = true;
+    const s = w.addStack(); s.layoutVertically(); s.centerAlignContent();
+    const t1 = s.addText(focus ? (live ? 'jetzt' : focus.start) : '–'); t1.font = Font.semiboldSystemFont(10); t1.centerAlignText();
+    const t2 = s.addText(focus && focus.sub ? focus.sub.short : '–'); t2.font = Font.heavyRoundedSystemFont(18); t2.minimumScaleFactor = 0.5; t2.centerAlignText();
+    return w;
+  }
+  if (family === 'accessoryRectangular') {
+    const t = w.addText(live ? `Jetzt: ${live.sub ? live.sub.name : ''}` : focus ? `${dayTitle(P)} ${focus.start}: ${focus.sub ? focus.sub.name : ''}` : 'Kein Unterricht');
+    t.font = Font.boldSystemFont(14); t.lineLimit = 1;
+    const l2 = w.addText(live ? `${live.room ? live.room + ' · ' : ''}bis ${live.end}` : focus && focus.room ? focus.room : '');
+    l2.font = Font.systemFont(12); l2.lineLimit = 1;
+    const after = live ? P.blocks[P.blocks.indexOf(live) + 1] : null;
+    const l3 = w.addText(after ? `Danach: ${lessonsText(after)} · ${after.start}` : target ? `Tippen: Hausaufgabe ${target.sub ? target.sub.short : ''}` : '');
+    l3.font = Font.systemFont(12); l3.lineLimit = 1;
+    return w;
+  }
+
+  w.backgroundColor = C.bg;
+  const tasksOn = (iso, id) => (st.tasks || []).filter((t) => !t.done && t.due === iso && t.subjectId === id).length;
+  const iso = isoDate(P.date);
+
+  if (family === 'small') {
+    w.setPadding(14, 14, 12, 14);
+    heading(w, live ? 'Jetzt' : focus ? `${dayTitle(P)} · ${focus.start}` : 'Stundenplan');
+    w.addSpacer(4);
+    if (!focus) addLabel(w, P.blocks.length || (st.lessons || []).length ? 'Kein Unterricht' : 'Noch kein Stundenplan', 14, C.muted, { lines: 2 });
+    else {
+      const name = addLabel(w, focus.sub ? focus.sub.name : '?', 20, focus.sub && focus.sub.color ? new Color(focus.sub.color) : C.text, { font: Font.heavyRoundedSystemFont(20), scale: 0.6 });
+      name.lineLimit = 1;
+      addLabel(w, `${focus.start}–${focus.end}${focus.room ? ' · ' + focus.room : ''}`, 12, C.text2);
+      const after = P.blocks[P.blocks.indexOf(focus) + 1];
+      if (after) { w.addSpacer(4); addLabel(w, `Danach ${after.start}: ${lessonsText(after)}`, 11, C.muted, { scale: 0.8 }); }
+    }
+    w.addSpacer();
+    haButton(w, target, 11);
+    return w;
+  }
+
+  const large = family === 'large' || family === 'extraLarge';
+  w.setPadding(12, 14, 12, 14);
+  const head = w.addStack();
+  head.layoutHorizontally();
+  head.centerAlignContent();
+  addLabel(head, dayTitle(P), 15, C.text, { font: Font.boldSystemFont(15) });
+  head.addSpacer(6);
+  addLabel(head, `${P.date.getDate()}. ${MONTHS[P.date.getMonth()]}`, 12, C.muted);
+  head.addSpacer();
+  haButton(head, target, 11);
+  w.addSpacer(6);
+
+  if (!P.blocks.length) {
+    addLabel(w, (st.lessons || []).length ? 'Kein Unterricht in den nächsten Tagen' : 'Trag deinen Stundenplan in Punktlandung ein.', 13, C.muted, { lines: 2 });
+    w.addSpacer();
+    return w;
+  }
+  const max = large ? 10 : 5;
+  let start = 0;
+  if (P.blocks.length > max) {
+    const idx = Math.max(0, P.blocks.indexOf(focus));
+    start = Math.max(0, Math.min(idx - 1, P.blocks.length - max));
+  }
+  P.blocks.slice(start, start + max).forEach((b, i) => {
+    if (i) w.addSpacer(large ? 3 : 1);
+    lessonRow(w, b, stateOf(b), large ? 14 : 12, tasksOn(iso, b.subjectId));
+  });
+
+  if (large) {
+    const due = (st.tasks || []).filter((t) => !t.done && t.due === iso);
+    w.addSpacer(12);
+    heading(w, `Hausaufgaben bis ${dayTitle(P).toLowerCase() === 'heute' ? 'heute' : dayTitle(P)}`);
+    w.addSpacer(4);
+    if (!due.length) addLabel(w, 'Nichts fällig', 13, C.muted);
+    const subj = (id) => (st.subjects || []).find((s) => s.id === id);
+    due.slice(0, 5).forEach((t, i) => {
+      if (i) w.addSpacer(3);
+      const s = subj(t.subjectId);
+      row(w, s && s.color, (s ? s.short + ' · ' : '') + (t.title || 'Aufgabe'), t.important ? '!!!' : '', C.danger, 13);
+    });
+  }
+  w.addSpacer();
+  footer(w, data);
+  return w;
+}
+
+/* ---------------- Hausaufgabe eintragen (Tipp aufs Widget) ---------------- */
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const shortDate = (iso) => { const d = parseDate(iso); return `${WD[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`; };
+
+async function info(title, message) {
+  const a = new Alert();
+  a.title = title;
+  a.message = message || '';
+  a.addAction('OK');
+  await a.presentAlert();
+}
+
+/* Schreibt die Aufgabe ins Konto. Wie die App: nur speichern, wenn der Stand im Konto
+   noch derselbe ist – sonst neu laden und erneut anhängen (nichts wird überschrieben). */
+async function saveTask(session, task) {
+  const uidUser = session.user_id || jwtSub(session.access_token);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const cur = await fetchState(session);
+    if (!cur.state) throw new Error('Im Konto sind noch keine Daten. Öffne zuerst Punktlandung und melde dich dort an.');
+    const state = cur.state;
+    state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
+    state.tasks.push(task);
+    const req = new Request(`${SUPABASE_URL}/rest/v1/user_data?user_id=eq.${encodeURIComponent(uidUser)}&updated_at=eq.${encodeURIComponent(cur.updatedAt)}`);
+    req.method = 'PATCH';
+    req.headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json', Prefer: 'return=representation' };
+    req.body = JSON.stringify({ data: state, updated_at: new Date().toISOString() });
+    req.timeoutInterval = 15;
+    const res = await req.loadJSON();
+    const status = req.response && req.response.statusCode;
+    if (status >= 400) throw new Error((res && res.message) || `Fehler ${status}`);
+    if (Array.isArray(res) && res.length) { writeCache({ state, fetchedAt: Date.now() }); return; }
+    // ein anderes Gerät war schneller → nochmal
+  }
+  throw new Error('Gerade nicht möglich – versuch es gleich noch einmal.');
+}
+
+async function addHomeworkFlow(subjectId) {
+  let session;
+  try { session = await validSession(); } catch (e) { if (e.auth) Keychain.remove(SESSION_KEY); else { await info('Keine Verbindung', 'Bist du online?'); return; } }
+  if (!session) { if (!(await loginFlow())) return; session = loadSession(); }
+
+  let st;
+  try { st = (await fetchState(session)).state; } catch (e) { const c = readCache(); st = c && c.state; }
+  if (!st) { await info('Noch keine Daten', 'Öffne Punktlandung und melde dich dort mit demselben Konto an.'); return; }
+  const subj = (id) => (st.subjects || []).find((s) => s.id === id);
+
+  // Fach wählen, falls keins mitgegeben wurde – Fächer von heute zuerst
+  let sub = subjectId ? subj(subjectId) : null;
+  if (!sub) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todays = [];
+    blocksOn(st, today).filter((b) => toMin(b.start) <= nowMin()).reverse().forEach((b) => { if (b.sub && !todays.includes(b.sub)) todays.push(b.sub); });
+    const list = todays.concat(subjectsSorted(st).filter((s) => !todays.includes(s)));
+    if (!list.length) { await info('Keine Fächer', 'Leg zuerst deine Fächer in Punktlandung an.'); return; }
+    const a = new Alert();
+    a.title = 'Hausaufgabe für …';
+    list.forEach((s) => a.addAction(s.name));
+    a.addCancelAction('Abbrechen');
+    const i = await a.presentSheet();
+    if (i === -1) return;
+    sub = list[i];
+  }
+
+  // Was und bis wann?
+  const next = nextLessons(st, sub.id, 2);
+  const a = new Alert();
+  a.title = `Hausaufgabe · ${sub.name}`;
+  a.message = 'Was ist zu tun?';
+  a.addTextField('z. B. Aufgabe 3 auf S. 42');
+  const choices = [];
+  next.forEach((n, i) => { choices.push(n.date); a.addAction(`Bis ${i ? 'übernächste' : 'nächste'} Stunde (${shortDate(n.date)})`); });
+  if (!next.length) { const t = isoDate(addDays(new Date(), 1)); choices.push(t); a.addAction(`Bis morgen (${shortDate(t)})`); }
+  choices.push('pick'); a.addAction('Anderes Datum …');
+  choices.push(''); a.addAction('Ohne Datum');
+  a.addCancelAction('Abbrechen');
+  const i = await a.presentAlert();
+  if (i === -1) return;
+  const title = a.textFieldValue(0).trim();
+  if (!title) { await info('Nichts eingetragen', 'Schreib kurz auf, was zu tun ist.'); return; }
+  let due = choices[i];
+  if (due === 'pick') {
+    const dp = new DatePicker();
+    dp.minimumDate = new Date();
+    dp.initialDate = next[0] ? parseDate(next[0].date) : addDays(new Date(), 1);
+    try { due = isoDate(await dp.pickDate()); } catch (e) { return; }
+  }
+
+  try {
+    await saveTask(session, { id: uid(), subjectId: sub.id, title, due, important: false, done: false });
+    await info('Gespeichert ✓', `${sub.short} · ${title}${due ? '\nbis ' + shortDate(due) : ''}\n\nIn Punktlandung erscheint sie beim nächsten Abgleich.`);
+  } catch (e) {
+    await info('Nicht gespeichert', e.message);
+  }
+}
+
 /* ---------------- In der Scriptable-App: Anmelden & Vorschau ---------------- */
 async function loginFlow() {
   const a = new Alert();
@@ -464,12 +808,12 @@ async function loginFlow() {
   }
 }
 
-async function preview(family) {
+async function preview(family, param) {
   const data = await getData();
   const w = data.error === 'login' ? messageWidget('Bitte anmelden', 'Starte das Skript noch einmal und melde dich an.')
     : data.error ? messageWidget('Keine Verbindung', 'Bist du online?')
     : !data.state ? messageWidget('Noch keine Daten', 'Melde dich in Punktlandung mit demselben Konto an.')
-    : buildWidget(data, family, '');
+    : buildWidget(data, family, param || '');
   if (family === 'small') await w.presentSmall();
   else if (family === 'large') await w.presentLarge();
   else await w.presentMedium();
@@ -484,14 +828,16 @@ async function appMenu() {
   const a = new Alert();
   a.title = 'Punktlandung-Widget';
   a.message = 'Du bist angemeldet. Leg das Widget auf den Home- oder Sperrbildschirm und wähle dieses Skript aus.';
-  ['Vorschau klein', 'Vorschau mittel', 'Vorschau groß'].forEach((t) => a.addAction(t));
+  ['Vorschau klein', 'Vorschau mittel', 'Vorschau groß', 'Vorschau Stundenplan', 'Hausaufgabe eintragen'].forEach((t) => a.addAction(t));
   a.addDestructiveAction('Abmelden');
   a.addCancelAction('Fertig');
   const i = await a.presentAlert();
   if (i === 0) await preview('small');
   else if (i === 1) await preview('medium');
   else if (i === 2) await preview('large');
-  else if (i === 3) { Keychain.remove(SESSION_KEY); if (fm.fileExists(cachePath)) fm.remove(cachePath); }
+  else if (i === 3) await preview('medium', 'stundenplan');
+  else if (i === 4) await addHomeworkFlow('');
+  else if (i === 5) { Keychain.remove(SESSION_KEY); if (fm.fileExists(cachePath)) fm.remove(cachePath); }
 }
 
 /* ---------------- Start ---------------- */
@@ -503,6 +849,9 @@ if (config.runsInWidget) {
   else if (!data.state) w = messageWidget('Noch keine Daten', 'Öffne Punktlandung und melde dich dort mit demselben Konto an.');
   else w = buildWidget(data, config.widgetFamily, args.widgetParameter);
   Script.setWidget(w);
+} else if (args.queryParameters && args.queryParameters.ha !== undefined) {
+  // Tipp auf „+ Hausaufgabe“ oder eine Stunde im Stundenplan-Widget
+  await addHomeworkFlow(args.queryParameters.ha);
 } else {
   await appMenu();
 }
