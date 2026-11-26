@@ -47,13 +47,30 @@
     return blocks;
   };
 
-  PL.nextLessonDate = function (subjectId, from) {
-    const base = from ? PL.parseDate(from) : new Date();
-    for (let i = 1; i <= 28; i++) {
-      const d = PL.addDays(base, i);
-      if (PL.blocksOn(d).some((b) => b.subjectId === subjectId)) return PL.isoDate(d);
+  /* Die nächsten Unterrichtstage eines Fachs (ab morgen), je Tag der erste Block */
+  PL.nextLessons = function (subjectId, count = 2) {
+    const out = [];
+    for (let i = 1; i <= 42 && out.length < count; i++) {
+      const d = PL.addDays(new Date(), i);
+      const b = PL.blocksOn(d).find((x) => x.subjectId === subjectId);
+      if (b) out.push({ date: PL.isoDate(d), block: b });
     }
-    return null;
+    return out;
+  };
+  PL.nextLessonDate = (subjectId) => { const n = PL.nextLessons(subjectId, 1)[0]; return n ? n.date : null; };
+
+  /* Stunde, die gerade läuft – oder die vor höchstens 20 Minuten zu Ende ging.
+     Die Nachlaufzeit endet früher, sobald die nächste eigene Stunde beginnt
+     (z. B. 5 Min. Pause nach der 3. Stunde → danach gilt schon das nächste Fach). */
+  PL.currentBlock = function (at) {
+    const now = at != null ? at : nowMin(), blocks = PL.blocksOn(new Date());
+    const live = blocks.find((b) => toMin(b.start) <= now && now <= toMin(b.end));
+    if (live) return live;
+    const i = blocks.map((b) => toMin(b.end) < now).lastIndexOf(true);
+    if (i < 0) return null;
+    const next = blocks[i + 1];
+    const until = Math.min(toMin(blocks[i].end) + 20, next ? toMin(next.start) : Infinity);
+    return now < until ? blocks[i] : null;
   };
 
   const dayLabel = (iso) => {
@@ -113,10 +130,20 @@
     const open = st().tasks.filter((t) => !t.done).sort((a, b) => (a.due || '9').localeCompare(b.due || '9') || (b.important - a.important));
     return `<section class="card">
       <div class="card-head"><div><h2 class="card-title">${ic('tasks')} Hausaufgaben</h2><div class="card-sub">${open.length ? open.length + ' offen' : 'Alles erledigt'}</div></div>
-        <div class="head-actions"><a class="link-btn" href="#/aufgaben">Alle ${ic('chevron-right', 'i-sm')}</a><button class="icon-btn" style="width:34px;height:34px" data-action="add-task" aria-label="Aufgabe hinzufügen">${ic('plus', 'i-sm')}</button></div></div>
+        <a class="link-btn" href="#/aufgaben">Alle ${ic('chevron-right', 'i-sm')}</a></div>
       ${open.length ? `<div class="tasks">${open.slice(0, 5).map((t) => taskRow(t, { showDue: true })).join('')}</div>` : `<div class="empty"><b>Keine offenen Aufgaben</b>Genieß die freie Zeit.</div>`}
+      ${addTaskBtn()}
     </section>`;
   };
+
+  /* Großer Knopf zum Eintragen – nennt das Fach der aktuellen Stunde */
+  function addTaskBtn(cls = '') {
+    const cur = PL.currentBlock(), sub = cur && PL.subject(cur.subjectId);
+    return `<button class="add-task-btn ${cls}" data-action="add-task" ${sub ? `style="--c:${sub.color}"` : ''}>
+      <span class="atb-plus">${ic('plus')}</span>
+      <span class="atb-text"><b>Hausaufgabe eintragen</b><small>${sub ? `für ${esc(sub.name)} – aktuelle Stunde` : 'Fach und Fälligkeit werden vorgeschlagen'}</small></span>
+    </button>`;
+  }
 
   /* ================= Kalender: Woche & Termine ================= */
   PL.views.plan = function (mode) {
@@ -203,15 +230,16 @@
     const openCount = st().tasks.filter((t) => !t.done).length;
     return `<div class="page view">
       <header class="page-head"><div><div class="eyebrow">${openCount} offen</div><h1 class="page-title">Aufgaben</h1></div>
-        <div class="head-actions"><button class="btn btn-primary" data-action="add-task">${ic('plus', 'i-sm')} Aufgabe</button></div></header>
+</header>
       <div class="seg" style="margin-bottom:18px">${segBtn('open', 'Offen')}${segBtn('done', 'Erledigt')}${segBtn('all', 'Alle')}</div>
       <div style="max-width:760px">
+      ${addTaskBtn('top')}
       ${groups.length ? groups.map((g) => `
         <div class="tl-group ${g.key === 'overdue' ? 'is-overdue' : ''}">
           <div class="tl-date">${label(g.key)}${g.key !== 'overdue' && g.key !== 'none' ? `<span>${PL.fmtDate(g.key)}</span>` : ''}</div>
           <div class="tasks card" style="padding:6px">${g.items.map((t) => taskRow(t)).join('')}</div>
         </div>`).join('')
-        : `<div class="empty"><b>${f === 'done' ? 'Noch nichts erledigt' : 'Keine offenen Aufgaben'}</b>${f === 'done' ? '' : 'Neue Hausaufgaben trägst du mit „+ Aufgabe“ ein.'}</div>`}
+        : `<div class="empty"><b>${f === 'done' ? 'Noch nichts erledigt' : 'Keine offenen Aufgaben'}</b>${f === 'done' ? '' : 'Neue Hausaufgaben trägst du oben mit „Hausaufgabe eintragen“ ein.'}</div>`}
       </div>
     </div>`;
   };
@@ -309,24 +337,31 @@
   PL.taskSheet = function (opts = {}) {
     const subs = PL.sortedSubjects();
     const ex = opts.id ? st().tasks.find((t) => t.id === opts.id) : null;
-    const f = ex ? Object.assign({}, ex) : { subjectId: opts.subjectId || (subs[0] && subs[0].id) || null, title: '', due: '', important: false, done: false };
-    if (!f.due && f.subjectId) f.due = PL.nextLessonDate(f.subjectId) || PL.isoDate(PL.addDays(new Date(), 1));
-    const quick = () => {
-      const nx = f.subjectId ? PL.nextLessonDate(f.subjectId) : null;
-      return [
-        nx ? ['next', 'Nächste Stunde', nx] : null,
-        ['tomorrow', 'Morgen', PL.isoDate(PL.addDays(new Date(), 1))],
-        ['week', 'In 1 Woche', PL.isoDate(PL.addDays(new Date(), 7))],
-      ].filter(Boolean);
+    const cur = PL.currentBlock();
+    const startSubj = opts.subjectId || (cur && cur.subjectId) || (subs[0] && subs[0].id) || null;
+    const f = ex ? Object.assign({}, ex) : { subjectId: startSubj, title: '', due: '', important: false, done: false };
+    let next = f.subjectId ? PL.nextLessons(f.subjectId, 2) : [];
+    if (!f.due) f.due = next[0] ? next[0].date : PL.isoDate(PL.addDays(new Date(), 1));
+    const quickHtml = () => next.map((n, i) => `<button type="button" class="chip ${f.due === n.date ? 'on' : ''}" data-due="${n.date}">${i ? 'Übernächste Stunde' : 'Nächste Stunde'}</button>`).join('');
+    // kleine Zeile unter der Auswahl: wann genau ist das?
+    const dueHint = () => {
+      if (!f.due) return '';
+      const n = next.find((x) => x.date === f.due);
+      const lbl = dayLabel(f.due);
+      const date = /^(Heute|Morgen|Gestern)$/.test(lbl) ? `${lbl}, ${PL.fmtDate(f.due).replace(/ \d{4}$/, '')}` : lbl;
+      if (n) { const b = n.block; return `${ic('clock', 'i-sm')} ${date} · ${b.from === b.to ? b.from + '.' : b.from + '.–' + b.to + '.'} Std. · ${esc(b.start)} Uhr${b.room ? ' · ' + esc(b.room) : ''}`; }
+      if (!st().lessons.length) return `${date} · Trag deinen Stundenplan ein, dann wird die nächste Stunde automatisch gewählt.`;
+      return date;
     };
-    const quickHtml = () => quick().map(([k, l, d]) => `<button type="button" class="chip ${f.due === d ? 'on' : ''}" data-due="${d}">${l}</button>`).join('');
+    const subjName = (id) => { const s = PL.subject(id); return s ? s.name : ''; };
     PL.openSheet(`
-      ${PL.sheetHead(ex ? 'Aufgabe bearbeiten' : 'Neue Hausaufgabe')}
+      ${PL.sheetHead(ex ? 'Aufgabe bearbeiten' : 'Neue Hausaufgabe', !ex && cur && cur.subjectId === f.subjectId && !opts.subjectId ? `Aus deiner aktuellen Stunde: ${esc(subjName(cur.subjectId))}` : '')}
       ${subs.length ? `<div class="field"><span class="field-label">Fach</span>${subjChips(subs, f.subjectId)}</div>` : ''}
       <div class="field"><label for="tTitle">Was ist zu tun?</label><textarea id="tTitle" class="input" rows="2" maxlength="200" placeholder="z. B. Aufgabe 3 auf S. 42" autofocus>${esc(f.title)}</textarea></div>
       <div class="field"><span class="field-label">Bis wann?</span>
-        <div class="chips" data-quick style="margin-bottom:8px">${quickHtml()}</div>
-        <input id="tDue" class="input" type="date" value="${esc(f.due)}"></div>
+        <div class="chips due-chips" data-quick ${next.length ? '' : 'hidden'}>${quickHtml()}</div>
+        <input id="tDue" class="input" type="date" value="${esc(f.due)}">
+        <div class="due-hint" data-due-hint>${dueHint()}</div></div>
       <div class="opt-row"><div><div class="t">Wichtig</div><div class="d">Wird mit !!! markiert</div></div><label class="switch"><input type="checkbox" id="tImp" ${f.important ? 'checked' : ''}><span></span></label></div>
       <div class="sheet-foot">
         ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
@@ -334,8 +369,15 @@
       </div>`, {
       onMount(sh) {
         const due = sh.querySelector('#tDue'), qBox = sh.querySelector('[data-quick]');
-        const refreshQuick = () => { qBox.innerHTML = quickHtml(); };
-        if (subs.length) bindChips(sh, (id) => { f.subjectId = id; if (!ex) { const nx = PL.nextLessonDate(id); if (nx) { f.due = nx; due.value = nx; } } refreshQuick(); });
+        const hint = sh.querySelector('[data-due-hint]');
+        const refreshQuick = () => { qBox.innerHTML = quickHtml(); qBox.hidden = !next.length; hint.innerHTML = dueHint(); };
+        if (subs.length) bindChips(sh, (id) => {
+          // war "Übernächste" gewählt, bleibt es dabei – sonst nächste Stunde
+          const idx = Math.max(0, next.findIndex((n) => n.date === f.due));
+          f.subjectId = id; next = PL.nextLessons(id, 2);
+          if (!ex && next.length) { f.due = (next[idx] || next[0]).date; due.value = f.due; }
+          refreshQuick();
+        });
         qBox.addEventListener('click', (e) => { const b = e.target.closest('[data-due]'); if (!b) return; f.due = b.dataset.due; due.value = f.due; refreshQuick(); });
         due.onchange = () => { f.due = due.value; refreshQuick(); };
         sh.querySelector('[data-save]').onclick = () => {

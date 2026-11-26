@@ -3,6 +3,12 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.2.2
+- Größerer Knopf „Hausaufgabe eintragen“ in der Übersicht und unter Aufgaben
+- Fach der aktuellen Stunde (oder der gerade beendeten – bis 20 Min. danach bzw. bis die nächste eigene Stunde beginnt) wird automatisch ausgewählt
+- Fälligkeit „Nächste Stunde“ ist vorausgewählt, dazu „Übernächste Stunde“; darunter steht klein, wann die Stunde ist
+- „Morgen“ und „In 1 Woche“ entfernt (eigenes Datum geht weiter über das Datumsfeld)
+
 ## 0.2.1
 - Noch nicht ausgefüllte Halbjahre sind in Block I und bei den Fächern nur grau und leer (keine Prognose-Zahlen mehr)
 
