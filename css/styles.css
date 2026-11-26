@@ -69,8 +69,8 @@
 *, *::before, *::after { box-sizing: border-box; }
 html {
   -webkit-text-size-adjust: 100%;
-  /* kein Zoomen mit zwei Fingern / Doppeltippen – nur Scrollen */
-  touch-action: pan-x pan-y;
+  /* kein Zoomen per Doppeltippen (Zwei-Finger-Zoom sperrt js/app.js) */
+  touch-action: manipulation;
 }
 body {
   margin: 0;

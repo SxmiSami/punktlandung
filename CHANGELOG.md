@@ -3,6 +3,10 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.4.2
+- Fächer in „Neue Hausaufgabe“ lassen sich auf iPhone/iPad wieder seitlich durchwischen (die Zoom-Sperre hat das Wischen blockiert)
+- Seitliches Wischen im Fenster schließt es nicht mehr versehentlich
+
 ## 0.4.1
 - Fenster (z. B. „Neue Hausaufgabe“) lassen sich auf iPhone/iPad nicht mehr seitlich verschieben – Wischen über die Fächer scrollt nur noch die Fächer
 - Datumsfeld ragt auf iPhone/iPad nicht mehr über den Fensterrand hinaus

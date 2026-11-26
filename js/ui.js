@@ -73,9 +73,15 @@
   function enableSwipe(sh) {
     const handle = sh.querySelector('.sheet-handle');
     if (!handle) return;
-    let y0 = null, dy = 0;
-    const start = (e) => { if (sh.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; sh.style.transition = 'none'; };
-    const move = (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) { sh.style.transform = `translateY(${dy}px)`; } };
+    let y0 = null, x0 = 0, dy = 0;
+    const start = (e) => { if (sh.scrollTop > 0 || e.target.closest('.chips, .seg')) return; y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; sh.style.transition = 'none'; };
+    const move = (e) => {
+      if (y0 == null) return;
+      const t = e.touches[0];
+      // seitliches Wischen ist kein Schließen
+      if (!dy && Math.abs(t.clientX - x0) > Math.abs(t.clientY - y0)) { y0 = null; return; }
+      dy = Math.max(0, t.clientY - y0); if (dy > 0) { sh.style.transform = `translateY(${dy}px)`; }
+    };
     const end = () => {
       if (y0 == null) return;
       sh.style.transition = 'transform .2s ease';
