@@ -3,6 +3,12 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.3.1
+- Speicheranzeige kompakt: kleine Wolke mit Prozentwert oben auf der Lernzettel-Seite, Details beim Antippen
+- Alle Speicherwerte in Prozent (MB klein darunter)
+- Einstellungen: nur noch eine Zeile für den Lernzettel-Speicher
+- Dateisymbole in den typischen Farben mit Kürzel: PDF rot, Word blau, Excel grün, PowerPoint orange, ZIP gelb, Bilder, Audio, Video, E-Books, Notizen, Text, Code u. a.
+
 ## 0.3.0
 - **Lernzettel**: Fotos, PDFs und andere Dateien hochladen – pro Fach und auf der neuen Seite „Lernzettel“
 - Speichern wahlweise in der Cloud, nur auf diesem Gerät oder beides; jederzeit umstellbar (z. B. aus der Cloud nehmen und nur lokal behalten, wenn der Platz knapp wird)

@@ -534,7 +534,7 @@
 
         ${accountCard()}
 
-        ${PL.notesStorageCard({ link: true })}
+        ${PL.notesStorageRow()}
 
         <section class="card">
           <div class="card-head"><div><h2 class="card-title">Daten</h2><div class="card-sub">${PL.sync.user ? 'Gespeichert auf diesem Gerät und in deinem Konto' : 'Ohne Konto nur auf diesem Gerät gespeichert'}</div></div></div>

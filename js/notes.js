@@ -5,12 +5,12 @@
   const F = PL.files;
   Object.assign(PL.ui, { notesTab: 'mine' });
 
-  const kindLabel = { img: 'Bild', pdf: 'PDF', file: 'Datei' };
-  const kindIcon = { img: 'image', pdf: 'file', file: 'file' };
+  const typeOfNote = (n) => PL.fileType(n.mime, n.ext ? 'x.' + n.ext : n.title);
+  const typeOfShare = (s) => PL.fileType(s.mime, s.title);
   const dateOf = (iso) => (iso ? PL.fmtDate(String(iso).slice(0, 10)) : '');
 
-  function tile(kind, color) {
-    return `<span class="note-tile" style="--c:${color || 'var(--accent)'}">${ic(kindIcon[kind])}<b>${kind === 'pdf' ? 'PDF' : ''}</b></span>`;
+  function tile(t) {
+    return `<span class="note-tile" style="--c:${t.color}" title="${esc(t.name)}">${ic(t.icon)}<b>${esc(t.label)}</b></span>`;
   }
 
   /* Wo liegt der Zettel? Kleine Symbole rechts in der Zeile */
@@ -30,9 +30,9 @@
     const kind = PL.fileKind(note.mime, note.title);
     const lost = !note.cloud && !note.devices.length && !F.isHere(note.id);
     return `<button class="row row-click note-row" data-action="open-note" data-id="${note.id}">
-      ${tile(kind, sub && sub.color)}
+      ${tile(typeOfNote(note))}
       <span class="row-main"><span class="row-title" style="display:block">${esc(note.title)}</span>
-      <span class="row-sub" style="display:block">${!opts.noSubject && sub ? esc(sub.short) + ' · ' : ''}${kindLabel[kind]} · ${PL.fmtBytes(note.size)} · ${dateOf(note.created)}${lost ? ' · <b style="color:var(--danger)">nirgends gespeichert</b>' : ''}</span></span>
+      <span class="row-sub" style="display:block">${!opts.noSubject && sub ? esc(sub.short) + ' · ' : ''}${typeOfNote(note).name} · ${PL.fmtBytes(note.size)} · ${dateOf(note.created)}${lost ? ' · <b style="color:var(--danger)">nirgends gespeichert</b>' : ''}</span></span>
       ${where(note)}
     </button>`;
   }
@@ -42,46 +42,73 @@
     const kind = PL.fileKind(s.mime, s.title);
     const from = s.owner_name || s.owner_email || 'Freund';
     return `<button class="row row-click note-row" data-action="open-shared" data-key="${esc(item.key)}">
-      ${tile(kind, s.subject_color)}
+      ${tile(typeOfShare(s))}
       <span class="row-main"><span class="row-title" style="display:block">${esc(s.title || 'Lernzettel')}</span>
       <span class="row-sub" style="display:block">von ${esc(from)}${s.subject_short ? ' · ' + esc(s.subject_short) : ''} · ${PL.fmtBytes(s.size)}${item.gone ? ' · nicht mehr geteilt' : ''}</span></span>
       <span class="note-where"><span class="nw on share">${ic('users', 'i-sm')}</span><span class="nw ${item.here ? 'on' : ''}">${ic('device', 'i-sm')}</span></span>
     </button>`;
   }
 
-  /* ---------- Speicheranzeige ---------- */
-  function meter(used, max, label, sub) {
-    const pct = max ? Math.min(100, (used / max) * 100) : 0;
-    const lvl = pct >= 95 ? 'full' : pct >= 80 ? 'warn' : '';
-    return `<div class="meter ${lvl}">
-      <div class="meter-top"><span class="t">${label}</span><span class="v num"><b>${PL.fmtBytes(used)}</b> von ${PL.fmtBytes(max)}</span></div>
+  /* ---------- Speicheranzeige (kompakt: Wolke mit Prozent, Details per Tippen) ---------- */
+  const pctOf = (used, max) => (max ? Math.min(100, (used / max) * 100) : 0);
+  const fmtPct = (p) => (p > 0 && p < 1 ? '< 1 %' : Math.round(p) + ' %');
+  const lvlOf = (p) => (p >= 95 ? 'full' : p >= 80 ? 'warn' : '');
+
+  /* Was zeigt die Wolke? */
+  function storageState() {
+    const S = PL.sync;
+    if (!S.enabled || !S.user) return { kind: 'local' };
+    if (F.remoteError === 'setup') return { kind: 'setup' };
+    return { kind: 'cloud', pct: pctOf(F.usedMine(), F.quota) };
+  }
+
+  PL.storagePill = function () {
+    F.refreshRemote();
+    const s = storageState();
+    const body = s.kind === 'cloud'
+      ? `${ic('cloud', 'i-sm')}<b class="num">${fmtPct(s.pct)}</b><span class="pill-bar"><i style="width:${Math.max(4, s.pct)}%"></i></span>`
+      : s.kind === 'setup' ? `${ic('cloud', 'i-sm')}<b>!</b>`
+      : `${ic('device', 'i-sm')}<b>Lokal</b>`;
+    return `<button class="store-pill ${s.kind === 'cloud' ? lvlOf(s.pct) : s.kind === 'setup' ? 'warn' : ''}" data-action="storage-info" title="Speicher anzeigen" aria-label="Speicher anzeigen">${body}</button>`;
+  };
+
+  function meter(pct, label, sub) {
+    return `<div class="meter ${lvlOf(pct)}">
+      <div class="meter-top"><span class="t">${label}</span><span class="v num"><b>${fmtPct(pct)}</b></span></div>
       <div class="meter-bar"><i style="width:${pct}%"></i></div>
       ${sub ? `<div class="hint">${sub}</div>` : ''}
     </div>`;
   }
-  PL.notesStorageCard = function (opts = {}) {
+  function storageDetails() {
     const S = PL.sync;
-    F.refreshRemote();
     let cloud = '';
     if (!S.enabled) cloud = `<p class="hint" style="margin:0 0 12px">Ohne Online-Speicher liegen Zettel nur auf diesem Gerät.</p>`;
     else if (!S.user) cloud = `<p class="hint" style="margin:0 0 12px">Melde dich an, um Zettel in der Cloud zu speichern und mit Freunden zu teilen. <button class="link-btn" data-action="login">Anmelden</button></p>`;
-    else if (F.remoteError === 'setup') cloud = `<div class="note-warn">${ic('alert', 'i-sm')}<div><b>Online-Speicher noch nicht eingerichtet.</b> Einmal <code>supabase/lernzettel.sql</code> in Supabase ausführen (siehe SYNC-EINRICHTEN.md). Bis dahin werden Zettel nur auf dem Gerät gespeichert.</div></div>`;
+    else if (F.remoteError === 'setup') cloud = `<div class="note-warn">${ic('alert', 'i-sm')}<div><b>Online-Speicher noch nicht eingerichtet.</b> Einmal <code>supabase/lernzettel.sql</code> in Supabase ausführen. Bis dahin werden Zettel nur auf dem Gerät gespeichert.</div></div>`;
     else {
-      const mine = F.usedMine();
-      const left = F.freeMine();
-      cloud = meter(mine, F.quota, `${ic('cloud', 'i-sm')} Deine Cloud`, `Noch ${PL.fmtBytes(left)} frei · max. ${F.cfg.maxFileMB} MB pro Datei`)
-        + (F.usage.total != null ? meter(F.usage.total, F.total, `${ic('users', 'i-sm')} Alle zusammen`, 'Der kostenlose Speicher wird mit deinen Freunden geteilt') : '');
+      cloud = meter(pctOf(F.usedMine(), F.quota), `${ic('cloud', 'i-sm')} Deine Cloud`, `${PL.fmtBytes(F.usedMine())} von ${F.cfg.quotaMB} MB · max. ${F.cfg.maxFileMB} MB pro Datei`)
+        + (F.usage.total != null ? meter(pctOf(F.usage.total, F.total), `${ic('users', 'i-sm')} Alle zusammen`, `${PL.fmtBytes(F.usage.total)} von 1 GB · wird mit deinen Freunden geteilt`) : '');
     }
     const est = F.estimate;
     const localN = Array.from(F.local.values()).filter((m) => (m.user || null) === (S.user ? S.user.id : null)).length;
-    const localLine = `<div class="meter">
-      <div class="meter-top"><span class="t">${ic('device', 'i-sm')} ${esc(F.device.name)} · dieses Gerät</span><span class="v num"><b>${PL.fmtBytes(F.localBytes())}</b> · ${localN} Zettel</span></div>
-      <div class="hint">${F.unavailable ? 'Dieser Browser erlaubt keinen lokalen Speicher (privates Fenster?).' : `Zählt nicht zur Cloud und geht auch offline${est && est.quota ? ` · Platz hier: ca. ${PL.fmtBytes(Math.max(0, est.quota - (est.usage || 0)))} frei` : ''}`}</div>
-    </div>`;
-    return `<section class="card ${opts.cls || ''}">
-      <div class="card-head"><div><h2 class="card-title">${ic('cloud')} Speicher</h2><div class="card-sub">Lernzettel online und auf deinen Geräten</div></div>${opts.link ? `<a class="link-btn" href="#/lernzettel">Öffnen ${ic('chevron-right', 'i-sm')}</a>` : ''}</div>
-      ${cloud}${localLine}
-    </section>`;
+    const local = F.unavailable
+      ? `<p class="hint">Dieser Browser erlaubt keinen lokalen Speicher (privates Fenster?).</p>`
+      : meter(est && est.quota ? pctOf(F.localBytes(), est.quota) : 0, `${ic('device', 'i-sm')} ${esc(F.device.name)} · dieses Gerät`, `${localN} Zettel · ${PL.fmtBytes(F.localBytes())} · zählt nicht zur Cloud, geht auch offline`);
+    return cloud + local + `<p class="hint" style="margin:10px 0 0;display:flex;gap:12px;flex-wrap:wrap"><span>${ic('cloud', 'i-sm')} Cloud</span><span>${ic('device', 'i-sm')} Dieses Gerät (+ weitere)</span><span>${ic('users', 'i-sm')} Geteilt</span></p>`;
+  }
+  PL.storageSheet = function () {
+    F.refreshRemote(true).then(() => { const box = document.querySelector('#sheet [data-storage]'); if (box) box.innerHTML = storageDetails(); });
+    PL.openSheet(`${PL.sheetHead('Speicher', 'Lernzettel online und auf deinen Geräten')}
+      <div data-storage>${storageDetails()}</div>
+      <div class="sheet-foot" style="margin-top:14px"><button type="button" class="btn btn-primary" data-action="close-sheet">Fertig</button></div>`);
+  };
+  /* Kurzfassung für die Einstellungen */
+  PL.notesStorageRow = function () {
+    const s = storageState();
+    const d = s.kind === 'cloud' ? `${fmtPct(s.pct)} deiner Cloud belegt · ${st().notes.length} Zettel`
+      : s.kind === 'setup' ? 'Online-Speicher noch nicht eingerichtet' : `Nur auf diesem Gerät · ${st().notes.length} Zettel`;
+    return `<section class="card"><div class="opt-row" style="padding:0"><div><div class="t">${ic('file', 'i-sm')} Lernzettel</div><div class="d">${d}</div></div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn btn-sm" data-action="storage-info">Details</button><a class="btn btn-sm" href="#/lernzettel">Öffnen</a></div></div></section>`;
   };
 
   function orphanCards() {
@@ -118,17 +145,10 @@
     }
     return `<div class="page view">
       <header class="page-head"><div><div class="eyebrow">${notes.length} Zettel${shared.length ? ` · ${shared.length} geteilt` : ''}</div><h1 class="page-title">Lernzettel</h1></div>
-        <div class="head-actions"><button class="btn btn-primary" data-action="add-note">${ic('upload', 'i-sm')} Hochladen</button></div></header>
-      <div class="notes-layout">
-        <div>
-          ${orphanCards()}
-          ${PL.sync.user ? `<div class="seg" style="margin-bottom:16px">${segBtn('mine', 'Meine', notes.length)}${segBtn('shared', 'Mit mir geteilt', shared.length)}</div>` : ''}
-          ${body}
-        </div>
-        <div>${PL.notesStorageCard()}
-          <p class="hint" style="margin:12px 4px 0;display:flex;gap:12px;flex-wrap:wrap"><span>${ic('cloud', 'i-sm')} Cloud</span><span>${ic('device', 'i-sm')} Dieses Gerät (+ weitere)</span><span>${ic('users', 'i-sm')} Geteilt</span></p>
-        </div>
-      </div>
+        <div class="head-actions">${PL.storagePill()}<button class="btn btn-primary hide-mobile" data-action="add-note">${ic('upload', 'i-sm')} Hochladen</button></div></header>
+      ${orphanCards()}
+      ${PL.sync.user ? `<div class="seg" style="margin-bottom:16px">${segBtn('mine', 'Meine', notes.length)}${segBtn('shared', 'Mit mir geteilt', shared.length)}</div>` : ''}
+      <div style="max-width:760px">${body}</div>
     </div>`;
   };
 
@@ -191,11 +211,11 @@
             : `Cloud: noch ${PL.fmtBytes(F.freeMine())} von ${F.cfg.quotaMB} MB frei.` + (f.mode === 'cloud' ? ' Auf anderen Geräten kannst du ihn jederzeit lokal speichern.' : '');
         };
         const draw = () => {
-          picked.innerHTML = f.files.map((file, i) => `<div class="row" style="padding:8px 4px">${tile(PL.fileKind(file.type, file.name))}
+          picked.innerHTML = f.files.map((file, i) => `<div class="row" style="padding:8px 4px">${tile(PL.fileType(file.type, file.name))}
             <span class="row-main"><span class="row-title" style="display:block">${esc(file.name)}</span><span class="row-sub" style="display:block">${PL.fmtBytes(file.size)}${file.size > F.maxFile && f.mode !== 'local' ? ' · <b style="color:var(--warn)">zu groß für die Cloud</b>' : ''}</span></span>
             <button type="button" class="icon-btn" data-rm="${i}" aria-label="Entfernen">${ic('x', 'i-sm')}</button></div>`).join('');
           titleField.hidden = f.files.length !== 1;
-          if (f.files.length === 1 && !sh.querySelector('#nTitle').value) sh.querySelector('#nTitle').value = f.files[0].name.replace(/\.[^.]{1,6}$/, '');
+          if (f.files.length === 1 && !sh.querySelector('#nTitle').value) sh.querySelector('#nTitle').value = f.files[0].name.replace(/\.[a-z0-9]{1,10}$/i, '');
           save.disabled = !f.files.length;
           save.innerHTML = `${ic('upload', 'i-sm')} ${f.files.length > 1 ? f.files.length + ' Zettel hochladen' : 'Hochladen'}`;
           modeHint.textContent = hintFor();
@@ -255,8 +275,8 @@
   };
 
   /* ---------- Vorschau ---------- */
-  function previewHtml(kind) {
-    return `<div class="note-preview" data-preview data-kind="${kind}">${kind === 'img' ? '<div class="hint">Vorschau wird geladen …</div>' : `${tile(kind)}`}</div>`;
+  function previewHtml(kind, t) {
+    return `<div class="note-preview" data-preview data-kind="${kind}">${kind === 'img' ? '<div class="hint">Vorschau wird geladen …</div>' : `${tile(t)}`}</div>`;
   }
   function loadPreview(sh, getBlob, title) {
     const box = sh.querySelector('[data-preview]');
@@ -308,8 +328,8 @@
     const shares = F.sharesOf(note);
     const reachable = here || note.cloud;
     const html = `
-      ${PL.sheetHead(esc(note.title), `${sub ? esc(sub.name) + ' · ' : ''}${kindLabel[kind]} · ${PL.fmtBytes(note.size)}${note.origSize ? ` (verkleinert von ${PL.fmtBytes(note.origSize)})` : ''}`)}
-      ${previewHtml(kind)}
+      ${PL.sheetHead(esc(note.title), `${sub ? esc(sub.name) + ' · ' : ''}${typeOfNote(note).name} · ${PL.fmtBytes(note.size)}${note.origSize ? ` (verkleinert von ${PL.fmtBytes(note.origSize)})` : ''}`)}
+      ${previewHtml(kind, typeOfNote(note))}
       <div class="note-actions">
         <button type="button" class="btn" data-open ${reachable ? '' : 'disabled'}>${ic('eye', 'i-sm')} Öffnen</button>
         <button type="button" class="btn" data-dl ${reachable ? '' : 'disabled'}>${ic('download', 'i-sm')} Sichern</button>
@@ -449,7 +469,7 @@
     const from = s.owner_name ? `${s.owner_name}${s.owner_email ? ' (' + s.owner_email + ')' : ''}` : s.owner_email || 'Freund';
     const html = `
       ${PL.sheetHead(esc(s.title || 'Lernzettel'), `von ${esc(from)}${s.subject ? ' · ' + esc(s.subject) : ''} · ${PL.fmtBytes(s.size)}`)}
-      ${previewHtml(kind)}
+      ${previewHtml(kind, typeOfShare(s))}
       <div class="note-actions">
         <button type="button" class="btn" data-open>${ic('eye', 'i-sm')} Öffnen</button>
         <button type="button" class="btn" data-dl>${ic('download', 'i-sm')} Sichern</button>
@@ -486,6 +506,7 @@
     'add-note': (d) => PL.addNotesSheet({ subjectId: d.subject || (location.hash.startsWith('#/fach/') ? location.hash.split('/')[2] : null) }),
     'open-note': (d) => PL.noteSheet(d.id),
     'open-shared': (d) => PL.sharedSheet(d.key),
+    'storage-info': () => PL.storageSheet(),
     'notes-tab': (d) => { PL.ui.notesTab = d.v; PL.render(); },
     'notes-restore-local': () => { const n = F.restoreLocal(); PL.toast(`${n} Zettel wiederhergestellt`); },
     'notes-restore-cloud': () => { const n = F.restoreCloud(); PL.toast(`${n} Zettel wiederhergestellt`); },

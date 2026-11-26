@@ -34,6 +34,39 @@
     if (n < 1024 * MB) return f(n / MB, n < 10 * MB ? 1 : 0) + ' MB';
     return f(n / (1024 * MB), 2) + ' GB';
   };
+  /* Dateityp → Name, Kürzel, Farbe, Symbol (Farben wie man sie von den Programmen kennt) */
+  const TYPES = [
+    { name: 'PDF', label: 'PDF', color: '#E5484D', icon: 'file', ext: ['pdf'], mime: /pdf/ },
+    { name: 'Word', label: 'DOC', color: '#2B6CEB', icon: 'file', ext: ['doc', 'docx', 'docm', 'dot', 'dotx', 'odt', 'rtf', 'pages'], mime: /msword|wordprocessing|opendocument\.text|rtf|pages/ },
+    { name: 'Excel', label: 'XLS', color: '#1E9E55', icon: 'table', ext: ['xls', 'xlsx', 'xlsm', 'ods', 'numbers'], mime: /excel|spreadsheet|numbers/ },
+    { name: 'Tabelle', label: 'CSV', color: '#1E9E55', icon: 'table', ext: ['csv', 'tsv'], mime: /csv|tab-separated/ },
+    { name: 'PowerPoint', label: 'PPT', color: '#E8692C', icon: 'slides', ext: ['ppt', 'pptx', 'pps', 'ppsx', 'odp', 'key'], mime: /powerpoint|presentation|keynote/ },
+    { name: 'Archiv', label: 'ZIP', color: '#C99A1E', icon: 'zip', ext: ['zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'xz'], mime: /zip|rar|7z|tar|gzip|bzip|x-xz|compressed/ },
+    { name: 'Bild', label: 'IMG', color: '#8B5CF6', icon: 'image', ext: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'bmp', 'tif', 'tiff', 'svg', 'avif'], mime: /^image\// },
+    { name: 'Audio', label: 'MP3', color: '#EC4899', icon: 'audio', ext: ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'oga', 'flac', 'opus', 'wma'], mime: /^audio\// },
+    { name: 'Video', label: 'MP4', color: '#0EA5E9', icon: 'video', ext: ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi', 'wmv'], mime: /^video\// },
+    { name: 'E-Book', label: 'EPUB', color: '#14B8A6', icon: 'book', ext: ['epub', 'mobi', 'azw3'], mime: /epub|mobipocket/ },
+    { name: 'Notizen', label: 'NOTE', color: '#7C3AED', icon: 'file', ext: ['goodnotes', 'note', 'notability', 'one', 'onepkg', 'xopp'], mime: /onenote/ },
+    { name: 'Text', label: 'TXT', color: '#64748B', icon: 'file', ext: ['txt', 'md', 'markdown', 'log'], mime: /^text\/(plain|markdown)/ },
+    { name: 'Code', label: 'CODE', color: '#0F766E', icon: 'code', ext: ['html', 'htm', 'css', 'js', 'ts', 'json', 'xml', 'py', 'java', 'c', 'cpp', 'h', 'cs', 'php', 'sql', 'sh', 'ipynb', 'tex'], mime: /json|javascript|html|xml|x-python|x-java|x-tex|x-sh/ },
+    { name: 'Schrift', label: 'FONT', color: '#A16207', icon: 'file', ext: ['ttf', 'otf', 'woff', 'woff2'], mime: /^font\// },
+  ];
+  const MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'image/svg+xml': 'svg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/wav': 'wav', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+  /* Mit Endung (oder "x.pdf"); ohne Punkt gibt es keine Endung (Titel ohne Endung) */
+  const extOf = (name) => { const m = String(name || '').match(/\.([a-z0-9]{1,10})$/i); return m ? m[1].toLowerCase() : ''; };
+  PL.fileType = function (mime, name) {
+    const ext = extOf(name);
+    const m = String(mime || '').toLowerCase();
+    let t = (ext && TYPES.find((x) => x.ext.includes(ext))) || (m && TYPES.find((x) => x.mime.test(m)));
+    if (!t) return { name: 'Datei', label: (ext || 'Datei').toUpperCase().slice(0, 4), color: '#64748B', icon: 'file' };
+    // Bilder, Audio, Video: echtes Format als Kürzel (JPG, PNG, MOV …)
+    if (['IMG', 'MP3', 'MP4'].includes(t.label)) {
+      const e = ext || MIME_EXT[m] || (m.split('/')[1] || '').replace(/^x-/, '');
+      if (e) t = Object.assign({}, t, { label: (e === 'jpeg' ? 'jpg' : e).toUpperCase().slice(0, 4) });
+    }
+    return t;
+  };
+  PL.fileExt = extOf;
   PL.fileKind = function (mime, name) {
     const m = mime || '';
     if (m.startsWith('image/')) return 'img';
@@ -182,7 +215,7 @@
     c.width = c.height = 0;
     return blob;
   }
-  const baseName = (name) => String(name || '').replace(/\.[^.\/\\]{1,6}$/, '');
+  const baseName = (name) => String(name || '').replace(/\.[a-z0-9]{1,10}$/i, '');
   F.prepare = async function (file, compress) {
     const type = file.type || guessMime(file.name);
     if (compress && /^image\/(jpeg|jpg|png|webp|heic|heif|bmp)$/i.test(type)) {
@@ -195,7 +228,9 @@
   };
   function guessMime(name) {
     const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1];
-    const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', txt: 'text/plain', md: 'text/markdown',
+    const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', gif: 'image/gif', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv',
+      doc: 'application/msword', xls: 'application/vnd.ms-excel', ppt: 'application/vnd.ms-powerpoint', odt: 'application/vnd.oasis.opendocument.text', ods: 'application/vnd.oasis.opendocument.spreadsheet', odp: 'application/vnd.oasis.opendocument.presentation', rtf: 'application/rtf',
+      zip: 'application/zip', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed', mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', mp4: 'video/mp4', mov: 'video/quicktime', epub: 'application/epub+zip', json: 'application/json',
       docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
     return ext ? map[ext.toLowerCase()] || '' : '';
   }
@@ -270,7 +305,7 @@
       onProgress && onProgress(i, files.length, file.name);
       const p = await F.prepare(file, opts.compress);
       const title = (files.length === 1 && opts.title) || baseName(file.name) || 'Lernzettel';
-      const note = { id: PL.uid(), subjectId: opts.subjectId || null, title, mime: p.mime, size: p.blob.size, origSize: p.origSize, created: new Date().toISOString(), cloud: false, devices: [] };
+      const note = { id: PL.uid(), subjectId: opts.subjectId || null, title, ext: PL.fileExt(p.name), mime: p.mime, size: p.blob.size, origSize: p.origSize, created: new Date().toISOString(), cloud: false, devices: [] };
       let local = false;
       if (wantLocal) {
         try { await putLocal(note.id, p.blob, { kind: 'own', title, mime: p.mime }); local = true; markDevice(note, true); }
