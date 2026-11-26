@@ -1,5 +1,5 @@
 /* Service Worker: macht die App offline-fähig */
-const VERSION = 'pl-0.8.0'; // gleich wie PL.VERSION in js/data.js
+const VERSION = 'pl-0.8.1'; // gleich wie PL.VERSION in js/data.js
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
   'js/config.js', 'js/data.js', 'js/store.js', 'js/calc.js', 'js/ui.js', 'js/views.js', 'js/sheets.js', 'js/plan.js', 'js/untis.js', 'js/sync.js', 'js/files.js', 'js/notes.js', 'js/feed.js', 'js/chat.js', 'js/chatui.js', 'js/app.js',

@@ -158,6 +158,7 @@
     },
     'login': () => PL.authSheet('login'),
     'signup': () => PL.authSheet('signup'),
+    'change-password': () => PL.changePasswordSheet(),
     'sync-now': () => PL.sync.syncNow && PL.sync.syncNow(),
     'logout': () => PL.confirmSheet('Abmelden?', 'Deine Noten bleiben in deinem Konto gespeichert und werden von diesem Gerät entfernt. Melde dich einfach wieder an, um sie zurückzuholen. Lernzettel, die auf diesem Gerät gespeichert sind, bleiben hier und tauchen nach dem Anmelden wieder auf.', 'Abmelden', async () => {
       await PL.sync.signOut();

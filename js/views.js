@@ -499,6 +499,7 @@
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
         <button class="btn btn-sm" data-action="sync-now">${ic('refresh', 'i-sm')} Jetzt synchronisieren</button>
+        <button class="btn btn-sm" data-action="change-password">${ic('lock', 'i-sm')} Passwort ändern</button>
         <button class="btn btn-sm btn-ghost" data-action="logout">Abmelden</button>
       </div></section>`;
   }

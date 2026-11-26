@@ -3,6 +3,10 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.8.1
+- **Passwort ändern**: Unter Einstellungen → Konto & Synchronisierung. Zur Sicherheit wird zuerst das aktuelle Passwort abgefragt, das neue gibst du zweimal ein
+- Aktuelles Passwort vergessen? Von dort aus lässt sich direkt ein Link zum Zurücksetzen schicken
+
 ## 0.8.0
 - **Neuigkeiten**: Alles Neue an einem Ort – über die Glocke auf der Übersicht, die Karte „Neuigkeiten“ oder (am PC) in der Seitenleiste. Der Zähler hängt am Reiter „Übersicht“
 - **Dateien aus Untis**: Lernzettel und Arbeitsblätter, die Lehrkräfte an Hausaufgaben oder Mitteilungen hängen, lassen sich direkt öffnen oder mit einem Tipp **als Lernzettel** im passenden Fach speichern

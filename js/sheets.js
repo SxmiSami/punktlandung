@@ -317,6 +317,50 @@
     });
   };
 
+  PL.changePasswordSheet = function () {
+    const S = PL.sync;
+    if (!S || !S.user) { PL.authSheet('login'); return; }
+    PL.openSheet(`${PL.sheetHead('Passwort ändern', esc(S.user.email || ''))}
+      <form data-pwchange novalidate>
+        <input type="email" autocomplete="username" value="${esc(S.user.email || '')}" hidden>
+        <div class="field"><label for="cpOld">Aktuelles Passwort</label><input id="cpOld" class="input" type="password" autocomplete="current-password" required autofocus></div>
+        <div class="field"><label for="cpNew">Neues Passwort</label><input id="cpNew" class="input" type="password" autocomplete="new-password" minlength="6" required>
+          <span class="hint">Mindestens 6 Zeichen</span></div>
+        <div class="field"><label for="cpNew2">Neues Passwort wiederholen</label><input id="cpNew2" class="input" type="password" autocomplete="new-password" minlength="6" required></div>
+        <div class="auth-msg" data-msg hidden></div>
+        <div class="sheet-foot col">
+          <button type="submit" class="btn btn-primary" data-submit>Passwort ändern</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-forgot>Aktuelles Passwort vergessen?</button>
+        </div>
+      </form>`, {
+      onMount(sh) {
+        const msg = sh.querySelector('[data-msg]');
+        const submit = sh.querySelector('[data-submit]');
+        const show = (text, ok) => { msg.hidden = !text; msg.textContent = text || ''; msg.classList.toggle('ok', !!ok); };
+        sh.querySelector('[data-pwchange]').onsubmit = async (e) => {
+          e.preventDefault();
+          const cur = sh.querySelector('#cpOld').value;
+          const next = sh.querySelector('#cpNew').value;
+          const next2 = sh.querySelector('#cpNew2').value;
+          if (!cur) { show('Bitte gib dein aktuelles Passwort ein.'); return; }
+          if (next.length < 6) { show('Das neue Passwort muss mindestens 6 Zeichen lang sein.'); return; }
+          if (next !== next2) { show('Die beiden neuen Passwörter stimmen nicht überein.'); return; }
+          if (next === cur) { show('Das neue Passwort muss sich vom alten unterscheiden.'); return; }
+          submit.disabled = true; show('');
+          try {
+            const err = await S.changePassword(cur, next);
+            if (err) { show(err); return; }
+            PL.closeSheet(); PL.toast('Passwort geändert');
+          } finally { submit.disabled = false; }
+        };
+        sh.querySelector('[data-forgot]').onclick = async () => {
+          const err = await S.resetPassword(S.user.email);
+          show(err || 'Wir haben dir einen Link zum Zurücksetzen geschickt.', !err);
+        };
+      },
+    });
+  };
+
   /* ---------- Eigenes Fach im Setup ---------- */
   PL.customSubjectSheet = function (onAdd) {
     const f = { color: PL.COLORS[Math.floor(Math.random() * PL.COLORS.length)] };

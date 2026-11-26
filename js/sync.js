@@ -135,6 +135,9 @@
     if (/email not confirmed/i.test(m)) return 'Bitte bestätige zuerst deine E-Mail-Adresse (Link im Postfach).';
     if (/already registered|already been registered/i.test(m)) return 'Für diese E-Mail gibt es schon ein Konto. Melde dich an.';
     if (/password should be at least|at least 6/i.test(m)) return 'Das Passwort muss mindestens 6 Zeichen lang sein.';
+    if (/should be different from the old/i.test(m)) return 'Das neue Passwort muss sich vom alten unterscheiden.';
+    if (/weak|pwned|leaked/i.test(m)) return 'Dieses Passwort ist zu leicht zu erraten. Nimm ein anderes.';
+    if (/reauthentication|nonce/i.test(m)) return 'Bitte melde dich neu an und versuche es dann noch einmal.';
     if (/valid email|invalid email|unable to validate email/i.test(m)) return 'Bitte gib eine gültige E-Mail-Adresse ein.';
     if (/rate limit|too many/i.test(m)) return 'Zu viele Versuche. Warte kurz und probier es dann noch einmal.';
     if (/failed to fetch|network/i.test(m)) return 'Keine Verbindung. Bist du online?';
@@ -156,6 +159,15 @@
   };
   S.updatePassword = async (password) => {
     const { error } = await S.client.auth.updateUser({ password });
+    return error ? germanError(error) : null;
+  };
+  // Passwort ändern, während man angemeldet ist: erst das aktuelle Passwort prüfen
+  S.changePassword = async (current, next) => {
+    const email = S.user && S.user.email;
+    if (!email) return 'Du bist nicht angemeldet.';
+    const { error: checkErr } = await S.client.auth.signInWithPassword({ email, password: current });
+    if (checkErr) return /invalid login credentials/i.test(checkErr.message || '') ? 'Das aktuelle Passwort ist falsch.' : germanError(checkErr);
+    const { error } = await S.client.auth.updateUser({ password: next });
     return error ? germanError(error) : null;
   };
   S.signOut = async () => {
