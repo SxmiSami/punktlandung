@@ -3,6 +3,9 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.7.2
+- Kalender übersichtlicher: Stunden sind neutral, die Fachfarbe steht nur noch als Streifen am linken Rand – so fallen Entfall (rot), Änderungen (grün), EVA und Klausuren (gelb) sofort auf
+
 ## 0.7.1
 - Behoben: Nach dem Update auf 0.7.0 blieb die App leer, wenn noch Untis-Daten von vorher gespeichert waren
 - Ein Fehler in der Untis-Anzeige kann die App nicht mehr komplett leer machen; im schlimmsten Fall erscheint eine Meldung mit „Neu laden“

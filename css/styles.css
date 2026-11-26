@@ -771,14 +771,15 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
   --c: #888; position: relative; z-index: 1; min-width: 0; overflow: hidden;
   border-radius: 11px; padding: 6px 7px; text-align: left;
   display: flex; flex-direction: column; justify-content: flex-start; gap: 1px;
-  background: color-mix(in srgb, var(--c) 30%, var(--card));
-  border-left: 3px solid var(--c);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--c);
   transition: transform .12s, filter .15s;
 }
-[data-theme="light"] .tt-block { background: color-mix(in srgb, var(--c) 18%, #fff); }
+[data-theme="light"] .tt-block { background: #F4F5F8; }
 .tt-block:hover { filter: brightness(1.12); }
 .tt-block:active { transform: scale(.97); }
-.tt-block b { font-family: var(--display); font-weight: 800; font-size: 14px; color: color-mix(in srgb, var(--c) 55%, var(--text)); line-height: 1.15; }
+.tt-block b { font-family: var(--display); font-weight: 800; font-size: 14px; color: var(--text); line-height: 1.15; }
 .tt-block span { font-size: 11px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tt-block em { font-style: normal; font-size: 10.5px; font-weight: 800; color: var(--t4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tt-block .wk { position: absolute; top: 4px; right: 5px; font-style: normal; font-size: 9.5px; font-weight: 800; padding: 1px 4px; border-radius: 5px; background: rgba(0,0,0,.25); color: var(--text-2); }
@@ -821,19 +822,19 @@ button.lesson-row { width: 100%; text-align: left; }
 .tt-block .hw { position: absolute; right: 5px; bottom: 4px; font-style: normal; display: inline-flex; align-items: center; gap: 1px; font-size: 10px; font-weight: 800; color: var(--accent-2); }
 .tt-block.half { padding: 5px 5px; }
 .tt-block.half b { font-size: 12.5px; }
-.tt-block.st-off { --c: var(--st-off); background: color-mix(in srgb, var(--st-off) 22%, var(--card)); border-left-color: var(--st-off); }
+.tt-block.st-off { background: color-mix(in srgb, var(--st-off) 24%, var(--card)); }
 .tt-block.st-off b { text-decoration: line-through; color: color-mix(in srgb, var(--st-off) 60%, var(--text)); }
 .tt-block.st-off em { color: var(--st-off); }
-.tt-block.st-chg { --c: var(--st-ok); background: color-mix(in srgb, var(--st-ok) 24%, var(--card)); border-left-color: var(--st-ok); }
+.tt-block.st-chg { background: color-mix(in srgb, var(--st-ok) 24%, var(--card)); }
 .tt-block.st-chg b { color: color-mix(in srgb, var(--st-ok) 55%, var(--text)); }
 [data-theme="light"] .tt-block.st-chg { background: color-mix(in srgb, var(--st-ok) 16%, #fff); }
 .tag-chg { background: var(--st-ok); color: #fff; }
 .tt-block.st-chg em { color: var(--st-ok); }
 .lesson-row.st-chg .lr-bar { background: var(--st-ok); }
-.tt-block.st-eva { --c: var(--st-ok); background: color-mix(in srgb, var(--st-ok) 16%, var(--card)); border: 1.5px dashed var(--st-ok); border-left-width: 3px; }
+.tt-block.st-eva { background: color-mix(in srgb, var(--st-ok) 16%, var(--card)); border: 1.5px dashed var(--st-ok); border-left: 4px solid var(--c); }
 .tt-block.st-eva b { color: color-mix(in srgb, var(--st-ok) 60%, var(--text)); }
 .tt-block.st-eva em { color: var(--st-ok); }
-.tt-block.st-exam { --c: var(--st-exam); background: color-mix(in srgb, var(--st-exam) 26%, var(--card)); border-left-color: var(--st-exam); }
+.tt-block.st-exam { background: color-mix(in srgb, var(--st-exam) 26%, var(--card)); }
 .tt-block.st-exam b { color: color-mix(in srgb, var(--st-exam) 55%, var(--text)); }
 .tt-block.st-exam em { color: var(--st-exam); }
 [data-theme="light"] .tt-block.st-off { background: color-mix(in srgb, var(--st-off) 14%, #fff); }
