@@ -3,6 +3,11 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.13.0
+- **OneNote-Seite an Hausaufgaben**: Beim Eintragen oder Bearbeiten einer Hausaufgabe lässt sich ein Link zu einer OneNote-Seite einfügen (in OneNote: Seite rechts anklicken bzw. gedrückt halten → „Link zu Seite kopieren“). Das OneNote-Symbol an der Aufgabe öffnet die Seite direkt in der OneNote-App, in der Aufgabe gibt es auch „Im Browser“
+- Die OneNote-Verknüpfung pro Fach ist wieder raus: keine OneNote-Karte im Fach, keine Microsoft-Anmeldung, keine OneNote-Seiten in den Neuigkeiten. `microsoft` in `js/config.js` und Schritt 8 in SYNC-EINRICHTEN.md werden nicht mehr gebraucht
+- Schon gespeicherte Seiten (HTML) bei den Dateien öffnen sich weiter in der App
+
 ## 0.12.0
 - **Termine neu gestaltet** – auf einen Blick sehen, wann welche Prüfung ansteht:
   - **Nächste Prüfung** groß oben: Fach, Tag, Stunde, Uhrzeit, Raum und ein Countdown in Tagen. Darunter die nächsten drei Prüfungen

@@ -9,9 +9,4 @@ window.PL_CONFIG = {
   // Lernzettel-Speicher (kostenloser Supabase-Plan: 1 GB für alle zusammen).
   // Bei Änderungen auch die 250 MB in supabase/lernzettel.sql anpassen.
   notes: { bucket: 'lernzettel', quotaMB: 250, totalMB: 1024, maxFileMB: 25 },
-
-  // OneNote über Microsoft 365 (optional, SYNC-EINRICHTEN.md Schritt 8).
-  // clientId = „Anwendungs-ID (Client)“, tenant = „Verzeichnis-ID (Mandant)“ der Schule.
-  // Beides ist nicht geheim. Leer lassen = nur Links zu OneNote-Abschnitten, ohne Anmeldung.
-  microsoft: { clientId: '', tenant: 'organizations' },
 };

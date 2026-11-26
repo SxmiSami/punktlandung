@@ -172,6 +172,30 @@
     </section>`;
   };
 
+  /* ---------- OneNote-Seite an einer Hausaufgabe ----------
+     In OneNote die Seite rechts anklicken bzw. gedrückt halten → „Link zu Seite kopieren“.
+     Die OneNote-App kopiert oft zwei Links (https://… und onenote:https://…) – beides wird erkannt. */
+  ['punktlandung:ms-token', 'punktlandung:ms-auth', 'punktlandung:onenote'].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* egal */ } }); // Reste der Microsoft-Anmeldung (bis 0.12)
+  PL.parseOneNote = function (raw) {
+    // Ein Link pro Zeile; OneNote-Links enthalten Leerzeichen (Seitentitel), daher nicht an Leerzeichen trennen
+    const urls = String(raw || '').replace(/onenote:/gi, '\nonenote:').split(/[\r\n]+/)
+      .map((l) => (l.match(/(onenote:)?https?:\/\/.*/i) || [''])[0].trim().replace(/ /g, '%20')).filter(Boolean);
+    const web = urls.find((u) => !/^onenote:/i.test(u)) || '';
+    const app = urls.find((u) => /^onenote:/i.test(u)) || '';
+    if (!web && !app) return null;
+    return { web, app }; // nur App-Link: der Pfad dahinter ist keine Webseite, daher kein „Im Browser“
+  };
+  const oneNoteApp = (x) => x.app || (/^https:\/\/[^/]*(sharepoint\.com|onedrive\.live\.com|1drv\.ms|onenote\.com)/i.test(x.web || '') ? 'onenote:' + x.web : '');
+  PL.openOneNote = function (x, where) {
+    if (!x) return;
+    const app = oneNoteApp(x);
+    if (where !== 'web' && app) location.href = app;
+    else if (x.web) window.open(x.web, '_blank', 'noopener');
+  };
+  const oneNoteButtons = (x) => `<div class="on-actions">
+      ${oneNoteApp(x) ? `<button type="button" class="btn btn-sm" data-on="app">${ic('notebook', 'i-sm')} In OneNote öffnen</button>` : ''}
+      ${x.web ? `<button type="button" class="btn btn-sm" data-on="web">${ic('globe', 'i-sm')} Im Browser</button>` : ''}</div>`;
+
   function taskRow(t, opts = {}) {
     const sub = PL.subject(t.subjectId);
     const c = sub ? sub.color : 'var(--muted)';
@@ -182,6 +206,7 @@
         <span class="task-title">${esc(t.title)}${t.important ? ' <b class="task-imp">!!!</b>' : ''}</span>
         <span class="task-meta">${sub ? `<span class="task-subj">${esc(sub.short)}</span>` : ''}${opts.showDue && t.due ? `<span class="${overdue ? 'overdue' : ''}">${dayLabel(t.due)}</span>` : ''}</span>
       </button>
+      ${t.onenote ? `<button class="icon-btn task-on" data-action="task-onenote" data-id="${t.id}" aria-label="OneNote-Seite öffnen" title="OneNote-Seite öffnen">${ic('notebook')}</button>` : ''}
     </div>`;
   }
 
@@ -372,6 +397,7 @@
   PL.extraActions = Object.assign(PL.extraActions || {}, {
     'lesson-info': (d) => PL.lessonInfoSheet(d.date, d.i),
     'plan-edit': () => { PL.ui.planEdit = !(PL.ui.planEdit || !st().lessons.length); PL.render(); },
+    'task-onenote': (d) => { const t = st().tasks.find((x) => x.id === d.id); if (t) PL.openOneNote(t.onenote); },
   });
 
   function pageHeadPlan(title, seg) {
@@ -530,6 +556,10 @@
         <div class="chips due-chips" data-quick ${next.length ? '' : 'hidden'}>${quickHtml()}</div>
         <input id="tDue" class="input" type="date" value="${esc(f.due)}">
         <div class="due-hint" data-due-hint>${dueHint()}</div></div>
+      <div class="field"><label for="tOn">OneNote-Seite <span class="muted" style="font-weight:500">(optional)</span></label>
+        <input id="tOn" class="input" value="${esc(f.onenote ? f.onenote.web || f.onenote.app : '')}" placeholder="Link zur Seite einfügen" autocomplete="off" inputmode="url">
+        <div class="due-hint">In OneNote die Seite rechts anklicken bzw. gedrückt halten → „Link zu Seite kopieren“</div>
+        ${f.onenote ? oneNoteButtons(f.onenote) : ''}</div>
       <div class="opt-row"><div><div class="t">Wichtig</div><div class="d">Wird mit !!! markiert</div></div><label class="switch"><input type="checkbox" id="tImp" ${f.important ? 'checked' : ''}><span></span></label></div>
       <div class="sheet-foot">
         ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
@@ -548,11 +578,18 @@
         });
         qBox.addEventListener('click', (e) => { const b = e.target.closest('[data-due]'); if (!b) return; f.due = b.dataset.due; due.value = f.due; refreshQuick(); });
         due.onchange = () => { f.due = due.value; refreshQuick(); };
+        sh.querySelectorAll('[data-on]').forEach((b) => { b.onclick = () => PL.openOneNote(f.onenote, b.dataset.on); });
         sh.querySelector('[data-save]').onclick = () => {
           f.title = sh.querySelector('#tTitle').value.trim();
           f.important = sh.querySelector('#tImp').checked;
           f.due = due.value;
           if (!f.title) { PL.toast('Was ist zu tun?'); return; }
+          const rawOn = sh.querySelector('#tOn').value.trim();
+          const on = rawOn ? PL.parseOneNote(rawOn) : null;
+          if (rawOn && !on) { PL.toast('Bitte füge den Link zur OneNote-Seite ein (beginnt mit https://)'); return; }
+          // unveränderten Link (mit App-Link) behalten
+          if (on && f.onenote && on.web && on.web === f.onenote.web && !on.app) on.app = f.onenote.app;
+          if (on) f.onenote = on; else delete f.onenote;
           PL.upsertTask(f);
           PL.closeSheet();
           PL.toast(ex ? 'Aufgabe aktualisiert' : 'Aufgabe gespeichert');

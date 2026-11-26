@@ -11,6 +11,7 @@
 
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
   let store = Object.assign({ items: [], read: {}, saved: {}, init: false, sharesInit: false, errors: {} }, load() || {});
+  store.items = store.items.filter((x) => x.kind !== 'onenote'); // OneNote-Seiten gab es bis 0.12 im Feed
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* voll */ } };
   const nowIso = () => new Date().toISOString();
   const subjectOf = (name) => {
@@ -138,16 +139,6 @@
     return fresh;
   };
 
-  /* Einträge aus anderen Quellen (z. B. neue OneNote-Seiten) */
-  FD.add = function (items) {
-    const seen = new Set();
-    let fresh = 0;
-    items.forEach((it) => { if (upsert(seen, it) === 'new') fresh++; });
-    prune();
-    persist();
-    return fresh;
-  };
-
   function prune() {
     const cut = PL.addDays(new Date(), -KEEP_DAYS).toISOString();
     store.items = store.items.filter((x) => x.at >= cut || (x.kind === 'exam' && x.date >= PL.today()))
@@ -188,13 +179,12 @@
     exam: { icon: 'alert', label: 'Klausur', color: '#EAB308' },
     change: { icon: 'calendar', label: 'Änderung', color: '#EF4444' },
     share: { icon: 'users', label: 'Geteilt', color: '#22C55E' },
-    onenote: { icon: 'notebook', label: 'OneNote', color: '#8B5CF6' },
   };
   const FILTERS = [
     ['all', 'Alle'], ['files', 'Dateien'], ['hw', 'Hausaufgaben'], ['msg', 'Mitteilungen'], ['plan', 'Klausuren & Ausfälle'],
   ];
   const inFilter = (x, f) => f === 'all'
-    || (f === 'files' && (x.kind === 'file' || x.kind === 'share' || x.kind === 'onenote' || (x.files && x.files.length) || x.hasFiles))
+    || (f === 'files' && (x.kind === 'file' || x.kind === 'share' || (x.files && x.files.length) || x.hasFiles))
     || (f === 'hw' && (x.kind === 'hw' || x.kind === 'file'))
     || (f === 'msg' && (x.kind === 'msg' || x.kind === 'news'))
     || (f === 'plan' && (x.kind === 'exam' || x.kind === 'change'));
@@ -227,7 +217,6 @@
         return { title: `${sub || 'Stunde'} ${what}`, sub: [whenDay(x.date), periodLabel(x), x.what === 'room' && x.origRoom && 'statt ' + x.origRoom, x.info].filter(Boolean).join(' · ') };
       }
       case 'share': return { title: x.title, sub: `von ${x.sender}${x.subject ? ' · ' + x.subject : ''}` };
-      case 'onenote': return { title: `Neue OneNote-Seite${sub ? ' in ' + sub : ''}`, sub: [x.title, x.section].filter(Boolean).join(' · ') };
       default: return { title: x.title || '', sub: '' };
     }
   }
@@ -235,7 +224,7 @@
   function rowHtml(x) {
     const k = KIND[x.kind] || KIND.news;
     const t = texts(x);
-    const c = ((x.kind === 'hw' || x.kind === 'onenote') && subColor(x)) || k.color;
+    const c = (x.kind === 'hw' && subColor(x)) || k.color;
     const files = x.files && x.files.length && x.kind !== 'file' ? `<span class="feed-clip">${ic('paperclip', 'i-sm')}${x.files.length}</span>` : x.hasFiles ? `<span class="feed-clip">${ic('paperclip', 'i-sm')}</span>` : '';
     const unread = !store.read[x.id];
     const cls = x.kind === 'change' ? ` ch-${x.what}` : '';
@@ -267,8 +256,7 @@
     const items = all.filter((x) => inFilter(x, f));
     const unread = all.filter((x) => !store.read[x.id]).length;
     const U = PL.untis;
-    const ON = PL.onenote;
-    const connected = (U && U.connected()) || (ON && ON.ready() && st().subjects.some((s) => s.onenote && s.onenote.id));
+    const connected = U && U.connected();
     const chips = FILTERS.map(([v, l]) => {
       const n = all.filter((x) => inFilter(x, v) && !store.read[x.id]).length;
       return `<button class="chip ${f === v ? 'on' : ''}" data-action="feed-filter" data-v="${v}">${l}${n ? ` <b class="chip-n">${n}</b>` : ''}</button>`;
@@ -389,7 +377,6 @@
     FD.markRead(id);
     if (PL.render) PL.render();
     if (x.kind === 'share') { PL.sharedSheet(x.key); return; }
-    if (x.kind === 'onenote') { PL.onenote.openFeedItem(x); return; }
     if (x.kind === 'change') { changeSheet(x); return; }
     if (x.kind === 'exam') {
       const ev = st().events.find((e) => e.untisId === x.untisId);
@@ -477,12 +464,9 @@
     'feed-filter': (d) => { PL.ui.feedFilter = d.v; PL.render(); },
     'feed-read-all': () => { FD.markAll(); PL.render(); PL.toast('Alles als gelesen markiert'); },
     'feed-refresh': (d, el) => {
+      if (!PL.untis || !PL.untis.connected()) return;
       el.disabled = true; el.classList.add('spin');
-      const U = PL.untis, ON = PL.onenote;
-      Promise.all([
-        U && U.connected() ? U.refresh({ force: true }) : null,
-        ON ? ON.check({ force: true }).catch(() => 0) : null,
-      ]).then(() => { PL.render(); PL.toast(U && U.error ? U.error : 'Aktualisiert'); });
+      PL.untis.refresh({ force: true }).then(() => PL.toast(PL.untis.error ? PL.untis.error : 'Aktualisiert'));
     },
   });
 })();

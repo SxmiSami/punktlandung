@@ -76,33 +76,6 @@ In der App dann unter **Einstellungen → Stundenplan → Untis** auf **„Verbi
 
 > Die Untis-Zugangsdaten bleiben nur auf deinem Gerät. Die Funktion bekommt sie bei jedem Abruf mitgeschickt, gibt sie an WebUntis weiter und speichert sie nicht. Sie spricht nur mit Adressen, die auf `.webuntis.com` enden – und beim Herunterladen von Dateien aus Untis mit dem Datei-Speicher, auf den Untis selbst verweist.
 
-## 8. OneNote einrichten (optional)
-
-Auch ohne diesen Schritt kannst du bei jedem Fach einen **Link** zu deinem OneNote-Abschnitt einfügen und ihn von dort öffnen. Für die Anmeldung mit dem Schulkonto, also für die Seiten in der App, neue Seiten in den Neuigkeiten und „Bei Dateien speichern“, braucht Punktlandung eine kostenlose **App-Registrierung bei Microsoft**. Diese Seite ist von Microsoft, nicht von Supabase.
-
-Mach das am besten mit deinem **Schulkonto**: Dann gehört die App zu deiner Schule, und ihr dürft meist ohne Administrator zustimmen.
-
-1. [entra.microsoft.com](https://entra.microsoft.com) mit dem Schulkonto öffnen → **Anwendungen → App-Registrierungen → Neue Registrierung**.
-   Kommt „Keine Berechtigung“ oder ist der Knopf ausgegraut, hat die Schule das für Schüler:innen abgeschaltet. Dann muss die IT die Registrierung anlegen (die Schritte hier weitergeben).
-2. **Name:** `Punktlandung`. **Unterstützte Kontotypen:** „Nur Konten in diesem Organisationsverzeichnis“.
-3. **Umleitungs-URI:** Plattform **„Single-Page-Anwendung (SPA)“** (nicht „Web“), Adresse `https://sxmisami.github.io/punktlandung/` (mit `/` am Ende). Die genaue Adresse steht auch in der App unter **Einstellungen → OneNote**.
-   Zum Ausprobieren am PC unter **Authentifizierung** zusätzlich `http://localhost:5173/` als SPA-Adresse eintragen.
-4. **Registrieren** klicken. Auf der Übersichtsseite die **Anwendungs-ID (Client)** und die **Verzeichnis-ID (Mandant)** kopieren.
-5. **API-Berechtigungen → Berechtigung hinzufügen → Microsoft Graph → Delegierte Berechtigungen** und diese auswählen: `Notes.Read.All`, `Team.ReadBasic.All` und `offline_access` (`User.Read` ist schon drin). Keine davon braucht laut Microsoft eine Administrator-Zustimmung.
-6. In [`js/config.js`](js/config.js) eintragen und hochladen (`git push`):
-   ```js
-   microsoft: { clientId: '<Anwendungs-ID>', tenant: '<Verzeichnis-ID>' },
-   ```
-
-In der App dann unter **Einstellungen → OneNote** auf **„Anmelden“** tippen und danach bei jedem Fach unter **OneNote → Verknüpfen** den passenden Abschnitt wählen. Abschnitte, die zum Fach passen, stehen oben.
-
-**„Administratorgenehmigung erforderlich“?** Dann lässt deine Schule Schüler:innen Apps nicht selbst zustimmen. Die App zeigt dann einen **Link für die IT** (Einstellungen → OneNote → „Kopieren“). Wer Administrator ist, öffnet ihn einmal und stimmt für die ganze Schule zu. Danach klappt die Anmeldung für alle.
-
-> - Die Microsoft-Anmeldung bleibt nur auf deinem Gerät. Punktlandung liest OneNote nur und ändert dort nichts.
-> - Ohne eigenen Server lässt Microsoft eine Anmeldung höchstens **24 Stunden** gelten. Danach steht in der App „Erneut anmelden“, das ist meist nur ein Tipp.
-> - Mit dem Stift Geschriebenes gibt Microsoft über die Schnittstelle nicht mit. „Hier ansehen“ und „Bei Dateien“ zeigen Text, Bilder und eingefügte PDFs. Für Handschrift gibt es „OneNote-App“.
-> - Liegen in der Dateiablage eines Teams über 5000 Dateien, lässt Microsoft das Notizbuch dort nicht über die Schnittstelle lesen. Öffnen per Link geht trotzdem.
-
 ## Danach
 
 In der App unter **Einstellungen → Konto & Synchronisierung** ein Konto erstellen. Auf jedem weiteren Gerät einfach mit derselben E-Mail anmelden.

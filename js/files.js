@@ -659,12 +659,25 @@
     const url = URL.createObjectURL(blob);
     setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     if (PL.fileKind(blob.type) === 'img') { if (win) win.close(); PL.imageViewer(url, title); return; }
-    // Seiten (z. B. aus OneNote) in der App zeigen, abgeschottet (ohne Skripte)
-    if (PL.fileKind(mime || blob.type, title) === 'html' && PL.htmlViewer) { if (win) win.close(); blob.text().then((t) => PL.htmlViewer(t, title)); return; }
+    // Gespeicherte Seiten (HTML) in der App zeigen, abgeschottet (ohne Skripte)
+    if (PL.fileKind(mime || blob.type, title) === 'html') { if (win) win.close(); blob.text().then((t) => PL.htmlViewer(t, title)); return; }
     if (win) { win.location.href = url; return; }
     const a = document.createElement('a');
     a.href = url; a.download = F.fileName(title, blob.type); a.target = '_blank'; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
+  };
+  PL.htmlViewer = function (html, title) {
+    const esc = PL.esc, ic = PL.icon;
+    const v = document.createElement('div');
+    v.className = 'viewer viewer-page';
+    v.innerHTML = `<div class="viewer-bar"><span>${esc(title || '')}</span><button class="icon-btn" aria-label="Schließen">${ic('x')}</button></div>
+      <div class="viewer-body"><iframe sandbox="allow-popups allow-popups-to-escape-sandbox" title="${esc(title || 'Seite')}"></iframe></div>`;
+    v.querySelector('iframe').srcdoc = html;
+    const close = () => { v.remove(); document.removeEventListener('keydown', onKey, true); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    v.querySelector('.viewer-bar button').onclick = close;
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(v);
   };
   F.save = async function (blob, title) {
     const name = F.fileName(title, blob.type);
