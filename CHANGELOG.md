@@ -3,6 +3,12 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.11.0
+- **Belastung**: Neue Statistik auf der Übersicht (nächste 6 Wochen) und oben bei den Terminen (nächste 8 Wochen). Jeder Tag ist ein Kästchen, das umso kräftiger gefärbt ist, je mehr ansteht – so siehst du stressige Wochen früh
+- Gezählt werden Abiprüfungen (4), Klausuren (3), Tests und Referate (je 2) und offene Aufgaben (je 1). Jede Woche bekommt eine Stufe: frei, ruhig, normal, viel oder stressig
+- Oben: stressigste Woche, Anzahl Klausuren, volle Wochen und Wochen ohne Prüfung
+- Tippen auf einen Tag mit Termin öffnet den Termin
+
 ## 0.10.0
 - **OneNote-Verknüpfung**: Bei jedem Fach einen Abschnitt aus OneNote verknüpfen, z. B. aus dem Kursnotizbuch im Team, und mit einem Tipp in der OneNote-App oder im Browser öffnen
 - Ohne Anmeldung: Link zum Abschnitt einfügen („Link zu Abschnitt kopieren“ in OneNote)

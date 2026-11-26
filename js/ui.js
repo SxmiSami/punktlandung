@@ -145,6 +145,60 @@
     return `<div class="histo">${h}</div>`;
   };
 
+  /* Belastungs-Heatmap: eine Zeile pro Woche, eine Zelle pro Tag */
+  const LOAD_TIER = [0, 1, 3, 4, 5];
+  PL.workloadCard = function (weeks = 8, opts = {}) {
+    const esc = PL.esc;
+    const data = PL.workload(weeks);
+    const tip = (it) => `${it.sub ? it.sub.short + ': ' : ''}${it.kind === 'task' ? 'Aufgabe – ' : it.type + ' – '}${it.title}`;
+    const dayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    const rows = data.map((w) => {
+      const d0 = PL.parseDate(w.start), d6 = PL.addDays(d0, 6);
+      const range = `${d0.getDate()}.${d0.getMonth() + 1}.–${d6.getDate()}.${d6.getMonth() + 1}.`;
+      const cells = w.days.map((d) => {
+        const evs = d.items.filter((it) => it.kind === 'event');
+        const tasks = d.items.length - evs.length;
+        const inner = evs.slice(0, 2).map((it) => `<b>${esc(it.sub ? it.sub.short : it.type.charAt(0))}</b>`).join('')
+          + (evs.length > 2 ? '<b>+</b>' : '') + (tasks ? `<i>${tasks > 1 ? tasks : ''}</i>` : '');
+        const label = `${dayNames[(PL.parseDate(d.date).getDay() + 6) % 7]}, ${PL.fmtDate(d.date)}${d.items.length ? ': ' + d.items.map(tip).join(', ') : ': nichts'}`;
+        const cls = `wl-cell${d.past ? ' past' : ''}${d.today ? ' today' : ''}`;
+        const attrs = `data-l="${d.level}" data-tier="${LOAD_TIER[d.level] || ''}" title="${esc(label)}" aria-label="${esc(label)}"`;
+        return evs.length
+          ? `<button type="button" class="${cls}" ${attrs} data-action="open-event" data-id="${evs[0].id}">${inner}</button>`
+          : `<span class="${cls}" ${attrs}>${inner}</span>`;
+      }).join('');
+      const sub = [w.exams && `${w.exams} ${w.exams === 1 ? 'Termin' : 'Termine'}`, w.tasks && `${w.tasks} ${w.tasks === 1 ? 'Aufgabe' : 'Aufgaben'}`].filter(Boolean).join(' · ');
+      return `<div class="wl-row">
+        <div class="wl-kw"><b>KW ${w.kw}</b><span>${range}</span></div>
+        <div class="wl-days">${cells}</div>
+        <div class="wl-sum" data-tier="${LOAD_TIER[w.level] || ''}" data-l="${w.level}" title="${esc(sub || 'Nichts geplant')}"><b>${PL.LOAD_LABELS[w.level]}</b><span>${sub || '–'}</span></div>
+      </div>`;
+    }).join('');
+
+    const peak = data.reduce((a, w) => (w.score > a.score ? w : a), data[0]);
+    const examsTotal = data.reduce((x, w) => x + w.days.reduce((y, d) => y + d.items.filter((it) => it.kind === 'event' && /Klausur|Abiprüfung/.test(it.type)).length, 0), 0);
+    const busy = data.filter((w) => w.level >= 3).length;
+    const free = data.filter((w) => !w.exams).length;
+    const stat = (v, l) => `<div class="wl-stat"><div class="v num">${v}</div><div class="l">${l}</div></div>`;
+    const stats = `<div class="wl-stats">
+      ${stat(peak.score ? 'KW ' + peak.kw : '–', 'Stressigste Woche')}
+      ${stat(examsTotal, 'Klausuren')}
+      ${stat(busy, busy === 1 ? 'Volle Woche' : 'Volle Wochen')}
+      ${stat(free, 'Ohne Prüfung')}
+    </div>`;
+    const legend = `<div class="wl-legend">${[1, 2, 3, 4].map((l) => `<span><i data-l="${l}" data-tier="${LOAD_TIER[l]}"></i>${PL.LOAD_LABELS[l]}</span>`).join('')}</div>`;
+
+    return `<section class="card ${opts.cls || ''}">
+      <div class="card-head"><div><h2 class="card-title">${PL.icon('calendar')} Belastung</h2><div class="card-sub">Nächste ${weeks} Wochen · Klausuren, Tests, Referate und offene Aufgaben</div></div>${opts.link ? `<a class="link-btn" href="#/termine">Termine ${PL.icon('chevron-right', 'i-sm')}</a>` : ''}</div>
+      ${stats}
+      <div class="wl">
+        <div class="wl-row wl-head"><div class="wl-kw"></div><div class="wl-days">${dayNames.map((n) => `<span>${n}</span>`).join('')}</div><div class="wl-sum"></div></div>
+        ${rows}
+      </div>
+      ${legend}
+    </section>`;
+  };
+
   PL.ring = function (frac) {
     const r = 46, c = 2 * Math.PI * r;
     const off = c * (1 - Math.max(0, Math.min(1, frac || 0)));

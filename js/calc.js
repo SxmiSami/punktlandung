@@ -192,6 +192,50 @@
     let s = 0;
     return gs.map((g, i) => { s += g.points; return { date: g.date, avg: s / (i + 1), points: g.points }; });
   };
+  /* Belastung pro Woche: Termine und offene Aufgaben ab dieser Woche.
+     Gewichte: Abiprüfung 4, Klausur 3, Test/Referat 2, offene Aufgabe 1 */
+  PL.LOAD_WEIGHTS = { 'Abiprüfung': 4, 'Klausur': 3, 'Test': 2, 'Referat': 2 };
+  PL.LOAD_LABELS = ['frei', 'ruhig', 'normal', 'viel', 'stressig'];
+  const weekLevel = (s) => (s <= 0 ? 0 : s <= 2 ? 1 : s <= 5 ? 2 : s <= 8 ? 3 : 4);
+  const dayLevel = (s) => (s <= 0 ? 0 : s <= 2 ? 1 : s <= 3 ? 2 : s <= 5 ? 3 : 4);
+  const isoWeek = (d) => {
+    const t = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const w1 = new Date(t.getFullYear(), 0, 4);
+    return 1 + Math.round(((t - w1) / 864e5 - 3 + ((w1.getDay() + 6) % 7)) / 7);
+  };
+  PL.workload = function (weeks = 8) {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const monday = PL.addDays(now, -((now.getDay() + 6) % 7));
+    const today = PL.today();
+    const end = PL.isoDate(PL.addDays(monday, weeks * 7));
+    const start = PL.isoDate(monday);
+    const byDay = {};
+    const add = (date, item) => { if (date >= start && date < end) (byDay[date] = byDay[date] || []).push(item); };
+    PL.state.events.forEach((e) => {
+      const w = PL.LOAD_WEIGHTS[e.type] || 0;
+      if (w) add(e.date, { kind: 'event', id: e.id, type: e.type, title: e.title || e.type, sub: PL.subject(e.subjectId), w });
+    });
+    PL.state.tasks.forEach((t) => {
+      if (!t.done && t.due && t.due >= today) add(t.due, { kind: 'task', title: t.title, sub: PL.subject(t.subjectId), w: 1 });
+    });
+    const out = [];
+    for (let i = 0; i < weeks; i++) {
+      const m = PL.addDays(monday, i * 7);
+      const days = [];
+      let score = 0, exams = 0, tasks = 0;
+      for (let k = 0; k < 7; k++) {
+        const iso = PL.isoDate(PL.addDays(m, k));
+        const items = byDay[iso] || [];
+        const s = items.reduce((x, it) => x + it.w, 0);
+        score += s;
+        items.forEach((it) => { if (it.kind === 'task') tasks++; else exams++; });
+        days.push({ date: iso, items, score: s, level: dayLevel(s), past: iso < today, today: iso === today });
+      }
+      out.push({ start: PL.isoDate(m), kw: isoWeek(m), days, score, level: weekLevel(score), exams, tasks });
+    }
+    return out;
+  };
+
   PL.distribution = function () {
     const d = new Array(16).fill(0);
     PL.state.grades.forEach((g) => { if (g.points >= 0 && g.points <= 15) d[g.points]++; });

@@ -205,7 +205,9 @@
           }).join('')}</div>
         </section>
 
-        <section class="card span-full">
+        ${PL.workloadCard(6, { cls: 'span-2', link: true })}
+
+        <section class="card span-mid">
           <div class="card-head"><div><h2 class="card-title">${ic('layers')} Punkteverteilung</h2><div class="card-sub">${st().grades.length} Noten insgesamt</div></div></div>
           ${PL.histogram(PL.distribution())}
         </section>
@@ -463,6 +465,7 @@
     return `<div class="page view">
       ${pageHead(seg || `${up.length} anstehend`, 'Kalender', `<button class="btn btn-primary" data-action="add-event">${ic('plus', 'i-sm')} Termin</button>`)}
       <div style="max-width:760px">
+      ${evs.length || st().tasks.some((t) => !t.done) ? `<div style="margin-bottom:16px">${PL.workloadCard(8)}</div>` : ''}
       ${!evs.length ? `<div class="empty"><b>Keine Termine</b>Trag Klausuren, Tests und Abiprüfungen ein – sie erscheinen mit Countdown in deiner Übersicht.<br><button class="btn btn-primary btn-sm" data-action="add-event">${ic('plus', 'i-sm')} Ersten Termin anlegen</button></div>` : ''}
       ${sec('Nächste 7 Tage', week, eventRow)}
       ${sec('Später', later, eventRow)}
