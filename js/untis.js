@@ -230,9 +230,12 @@
     PL.openSheet(`
       ${PL.sheetHead('Mit Untis verbinden', 'Stundenplan übernehmen und Ausfälle sehen')}
       <form data-untis novalidate>
+        <p class="hint" style="margin:0 0 10px">Öffne WebUntis (z. B. am PC): <b>Profil → Freigaben → Zugriff über Untis Mobile → Anzeigen</b>. Dann den QR-Code scannen – alles Weitere füllt sich von selbst.</p>
+        <button type="button" class="btn btn-primary qr-btn" data-scan>${ic('camera', 'i-sm')} QR-Code scannen</button>
+        <details class="qr-manual" ${saved ? 'open' : ''}><summary>Oder selbst eintragen</summary>
         <div class="field"><label for="uLink">Link aus dem QR-Code <span class="muted">(optional)</span></label>
           <input id="uLink" class="input" placeholder="untis://setschool?url=…" autocomplete="off" autocapitalize="off" spellcheck="false">
-          <span class="hint">In WebUntis: <b>Profil → Freigaben → Zugriff über Untis Mobile → Anzeigen</b>. Den Link unter dem QR-Code hier einfügen – dann füllt sich alles von selbst.</span></div>
+          <span class="hint">Steht unter dem QR-Code. Einfügen – dann füllt sich alles von selbst.</span></div>
         <div class="field-row">
           <div class="field"><label for="uServer">Server</label><input id="uServer" class="input" value="${esc(f.server)}" placeholder="z. B. nessa.webuntis.com" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
           <div class="field"><label for="uSchool">Schule</label><input id="uSchool" class="input" value="${esc(f.school)}" placeholder="Schulname in Untis" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
@@ -244,6 +247,7 @@
           <span class="hint">Steht unter dem QR-Code. Funktioniert auch, wenn du dich sonst über ein Schulkonto anmeldest.</span></div>
         <div class="field" data-m="password" ${f.method === 'password' ? '' : 'hidden'}><label for="uPw">Untis-Passwort</label>
           <input id="uPw" class="input" type="password" value="${esc(f.password)}" autocomplete="current-password"></div>
+        </details>
         <p class="hint" style="margin:0 0 14px">${ic('info', 'i-sm')} Die Zugangsdaten bleiben nur auf diesem Gerät. Sie werden bei jedem Abruf über deinen Supabase-Zugang an Untis geschickt und dort nicht gespeichert.</p>
         <div class="auth-msg" data-msg hidden></div>
         <div class="sheet-foot"><button type="submit" class="btn btn-primary" data-go>${ic('download', 'i-sm')} Stundenplan laden</button></div>
@@ -258,12 +262,17 @@
           sh.querySelectorAll('[data-m]').forEach((x) => { x.hidden = x.dataset.m !== m; });
         };
         methodBox.addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) setMethod(b.dataset.v); });
-        $('#uLink').addEventListener('input', (e) => {
-          const p = U.parseLink(e.target.value);
-          if (!p) return;
+        const fill = (p, how) => {
           $('#uServer').value = p.server; $('#uSchool').value = p.school; $('#uUser').value = p.user; $('#uSecret').value = p.secret;
           setMethod('secret');
-          msg.hidden = false; msg.className = 'auth-msg ok'; msg.textContent = 'Daten aus dem Link übernommen.';
+          $('.qr-manual').open = true;
+          msg.hidden = false; msg.className = 'auth-msg ok'; msg.textContent = `${how} – ${p.user} an ${p.school}.`;
+        };
+        $('#uLink').addEventListener('input', (e) => { const p = U.parseLink(e.target.value); if (p) fill(p, 'Daten aus dem Link übernommen'); });
+        $('[data-scan]').onclick = () => U.scanQR((p) => {
+          fill(p, 'QR-Code erkannt');
+          // gleich laden – dafür war der Scan da
+          $('[data-untis]').requestSubmit();
         });
         $('[data-untis]').addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -394,6 +403,106 @@
       PL.save();
     });
   }
+
+  /* ---------- QR-Code scannen (Kamera oder Foto/Screenshot) ---------- */
+  const JSQR = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+  let decoder = null;
+  const loadScript = (src) => new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = () => fail(new Error('Der QR-Leser konnte nicht geladen werden. Bist du online?'));
+    document.head.appendChild(s);
+  });
+  /* liefert eine Funktion: Bild/Video → Text im QR-Code (oder null) */
+  async function getDecoder() {
+    if (decoder) return decoder;
+    if ('BarcodeDetector' in window) {
+      try {
+        if ((await window.BarcodeDetector.getSupportedFormats()).includes('qr_code')) {
+          const d = new window.BarcodeDetector({ formats: ['qr_code'] });
+          return (decoder = async (src) => { const r = await d.detect(src); return r[0] ? r[0].rawValue : null; });
+        }
+      } catch (e) { /* weiter mit jsQR */ }
+    }
+    if (!window.jsQR) await loadScript(JSQR);
+    const c = document.createElement('canvas'), ctx = c.getContext('2d', { willReadFrequently: true });
+    return (decoder = async (src) => {
+      const w = src.videoWidth || src.width, h = src.videoHeight || src.height;
+      if (!w || !h) return null;
+      const k = Math.min(1, 1000 / Math.max(w, h));
+      c.width = Math.round(w * k); c.height = Math.round(h * k);
+      ctx.drawImage(src, 0, 0, c.width, c.height);
+      const r = window.jsQR(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+      return r ? r.data : null;
+    });
+  }
+  U.decodeImage = async function (file) {
+    const dec = await getDecoder();
+    const bmp = await createImageBitmap(file);
+    try { return await dec(bmp); } finally { if (bmp.close) bmp.close(); }
+  };
+
+  U.scanQR = function (onFound) {
+    const box = document.createElement('div');
+    box.className = 'qr-scan';
+    box.innerHTML = `<div class="qr-view"><video playsinline muted autoplay></video><div class="qr-frame"></div></div>
+      <p class="qr-msg" data-msg>Kamera wird gestartet …</p>
+      <div class="qr-actions"><button type="button" class="btn" data-photo>${ic('image', 'i-sm')} Foto oder Screenshot</button><button type="button" class="btn btn-ghost" data-cancel>Abbrechen</button></div>`;
+    document.body.appendChild(box);
+    const video = box.querySelector('video'), msgEl = box.querySelector('[data-msg]');
+    let stream = null, done = false, timer = null;
+    const say = (t, bad) => { msgEl.textContent = t; msgEl.classList.toggle('bad', !!bad); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); stop(); } };
+    const stop = () => {
+      done = true; clearTimeout(timer);
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      window.removeEventListener('keydown', onKey, true);
+      box.remove();
+    };
+    window.addEventListener('keydown', onKey, true);
+    const handle = (text) => {
+      if (!text) return false;
+      const p = U.parseLink(text);
+      if (!p) { say('Das ist kein Untis-QR-Code. Nimm den aus „Zugriff über Untis Mobile“.', true); return false; }
+      stop(); onFound(p); return true;
+    };
+    box.querySelector('[data-cancel]').onclick = stop;
+    box.querySelector('[data-photo]').onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = async () => {
+        const file = inp.files[0]; if (!file) return;
+        say('Bild wird gelesen …');
+        try {
+          const text = await U.decodeImage(file);
+          if (!text) say('Im Bild wurde kein QR-Code gefunden. Schneide es enger zu oder versuch es mit der Kamera.', true);
+          else handle(text);
+        } catch (e) { say(e.message || 'Das Bild konnte nicht gelesen werden.', true); }
+      };
+      inp.click();
+    };
+    (async () => {
+      let dec;
+      try { dec = await getDecoder(); } catch (e) { say(e.message, true); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { box.classList.add('no-cam'); say('Kamera ist hier nicht verfügbar – wähle ein Foto oder einen Screenshot vom QR-Code.'); return; }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+      } catch (e) {
+        box.classList.add('no-cam');
+        say(e && e.name === 'NotAllowedError' ? 'Kein Zugriff auf die Kamera. Erlaube ihn in den Einstellungen oder wähle ein Foto vom QR-Code.' : 'Keine Kamera gefunden – wähle ein Foto oder einen Screenshot vom QR-Code.', true);
+        return;
+      }
+      if (done) { stream.getTracks().forEach((t) => t.stop()); return; }
+      video.srcObject = stream;
+      try { await video.play(); } catch (e) { /* autoplay */ }
+      say('Halte die Kamera auf den QR-Code in WebUntis.');
+      const tick = async () => {
+        if (done) return;
+        try { if (video.readyState >= 2 && handle(await dec(video))) return; } catch (e) { /* nächstes Bild */ }
+        timer = setTimeout(tick, 200);
+      };
+      tick();
+    })();
+  };
 
   U.disconnect = function () {
     PL.confirmSheet('Untis trennen?', 'Die Zugangsdaten werden von diesem Gerät gelöscht. Dein Stundenplan bleibt erhalten, Ausfälle werden aber nicht mehr angezeigt.', 'Trennen', () => {

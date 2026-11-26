@@ -3,6 +3,11 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.5.1
+- Untis verbinden per **QR-Code scannen**: Kamera auf den Code in WebUntis halten (Profil → Freigaben → Zugriff über Untis Mobile) – alles füllt sich aus und der Stundenplan lädt sofort
+- Geht auch mit einem Foto oder Screenshot vom QR-Code
+- Felder zum selbst Eintragen sind unter „Oder selbst eintragen“ eingeklappt
+
 ## 0.5.0
 - **Untis**: Unter Einstellungen → Stundenplan mit WebUntis verbinden – per Link aus dem QR-Code (Schlüssel, geht auch mit Schulkonto) oder mit Passwort
 - Stundenplan, Räume und Stundenzeiten werden übernommen; A/B-Wochen werden erkannt; Untis-Fächer lassen sich eigenen Fächern zuordnen oder neu anlegen
