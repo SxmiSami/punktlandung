@@ -3,6 +3,10 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.7.1
+- Behoben: Nach dem Update auf 0.7.0 blieb die App leer, wenn noch Untis-Daten von vorher gespeichert waren
+- Ein Fehler in der Untis-Anzeige kann die App nicht mehr komplett leer machen; im schlimmsten Fall erscheint eine Meldung mit „Neu laden“
+
 ## 0.7.0
 - **Kalender mit Ansicht- und Bearbeiten-Modus**: Normal siehst du die Woche mit allen Änderungen und tippst eine Stunde für Details an (Raum, Lehrkraft, Klausur, fällige Hausaufgaben). Über „Bearbeiten“ änderst du den festen Stundenplan, mit „Fertig“ geht es zurück
 - Farben wie in Untis: **Entfall rot**, **Raum- und Lehreränderung grün**, **EVA grün gestrichelt** mit durchgestrichenem Lehrerkürzel, **Klausuren gelb**

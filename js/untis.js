@@ -176,8 +176,9 @@
     const periods = st().settings.periods;
     return day.map((l) => {
       const r = U.periodRange(l.start, l.end, periods);
-      const sid = l.subjects[0] ? U.matchSubject(l.subjects[0]) : null;
-      return r ? Object.assign({}, l, r, { subjectId: sid === 'skip' ? null : sid }) : null;
+      const sid = l.subjects && l.subjects[0] ? U.matchSubject(l.subjects[0]) : null;
+      // Daten von älteren Funktions-Versionen haben nicht alle Felder
+      return r ? Object.assign({ subjects: [], rooms: [], origRooms: [], teachers: [], origTeachers: [], info: '', code: '', type: 'ls' }, l, r, { subjectId: sid === 'skip' ? null : sid }) : null;
     }).filter(Boolean);
   };
 

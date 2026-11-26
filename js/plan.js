@@ -44,7 +44,11 @@
       }
     });
     blocks.forEach((b) => { b.start = PL.period(b.from).start; b.end = PL.period(b.to).end; });
-    return PL.untis && !(opts && opts.raw) ? PL.untis.annotate(date, blocks) : blocks;
+    if (PL.untis && !(opts && opts.raw)) {
+      try { return PL.untis.annotate(date, blocks.map((b) => Object.assign({}, b, { ids: b.ids.slice() }))); }
+      catch (e) { console.error('Untis-Anzeige', e); }
+    }
+    return blocks;
   };
 
   /* Die nächsten Unterrichtstage eines Fachs (ab morgen), je Tag der erste Block */
@@ -89,7 +93,9 @@
   PL.dayItems = function (date) {
     const iso = PL.isoDate(date);
     const blocks = PL.blocksOn(date).map((b) => Object.assign({ kind: 'lesson' }, b));
-    const extras = (PL.untis ? PL.untis.extrasOn(date, blocks) : []).map((x) => Object.assign({ kind: 'extra', ids: [] }, x));
+    let extras = [];
+    try { extras = (PL.untis ? PL.untis.extrasOn(date, blocks) : []).map((x) => Object.assign({ kind: 'extra', ids: [] }, x)); }
+    catch (e) { console.error('Untis-Zusätze', e); }
     // selbst eingetragene Klausuren/Tests färben die Stunde des Fachs
     st().events.filter((e) => e.date === iso && e.subjectId && /Klausur|Test|Abiprüfung/.test(e.type)).forEach((e) => {
       const name = e.type + (e.title ? ': ' + e.title : '');

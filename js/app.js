@@ -59,6 +59,7 @@
     if (r.name === 'chat' && !changed && PL.chatPatch && PL.chatPatch(r.arg)) { renderNav(r); return; }
 
     let html;
+    try {
     if (!PL.state.subjects.length && r.name !== 'setup' && r.name !== 'einstellungen' && r.name !== 'chat') html = PL.views.welcome();
     else switch (r.name) {
       case 'faecher': html = PL.views.subjects(); break;
@@ -74,6 +75,14 @@
       case 'einstellungen': html = PL.views.settings(); break;
       case 'setup': html = PL.views.setup(); break;
       default: html = PL.views.dashboard();
+    }
+    } catch (e) {
+      // Nie eine leere Seite: Fehler zeigen, Navigation bleibt nutzbar
+      console.error(e);
+      html = `<div class="page view"><section class="card" style="max-width:640px"><div class="empty"><b>Diese Seite konnte nicht angezeigt werden</b>
+        Deine Daten sind sicher. Lade die App neu – wenn es bleibt, schick einen Screenshot dieser Meldung.<br>
+        <code style="display:block;margin-top:10px;font-size:12px;color:var(--muted);white-space:pre-wrap">${PL.esc(e && e.message || e)}</code>
+        <button class="btn btn-sm btn-primary" style="margin-top:12px" onclick="location.reload()">Neu laden</button></div></section></div>`;
     }
     if (html === '') return; // Umleitung läuft
     main.innerHTML = html;
