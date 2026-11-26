@@ -3,6 +3,12 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.4.1
+- Fenster (z. B. „Neue Hausaufgabe“) lassen sich auf iPhone/iPad nicht mehr seitlich verschieben – Wischen über die Fächer scrollt nur noch die Fächer
+- Datumsfeld ragt auf iPhone/iPad nicht mehr über den Fensterrand hinaus
+- Kein Zoomen mehr mit zwei Fingern oder Doppeltippen
+- Kein automatisches Reinzoomen mehr beim Antippen eines Eingabefelds (die App bleibt in der richtigen Größe)
+
 ## 0.4.0
 - **Chat** mit Freunden: Einzelchats und Gruppen (z. B. „Mathe-LK“), neuer Punkt „Chat“ in der Navigation mit Zähler für ungelesene Nachrichten
 - Nachrichten kommen live an; Hinweis unten, wenn in einem anderen Chat etwas Neues ankommt

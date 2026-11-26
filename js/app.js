@@ -4,6 +4,10 @@
   const main = document.getElementById('main');
   let lastRoute = null;
 
+  /* Kein Zoomen mit zwei Fingern (iOS ignoriert user-scalable=no) */
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
+
   function route() {
     const h = (location.hash || '#/').replace(/^#\/?/, '');
     const [name, arg] = h.split('/');
