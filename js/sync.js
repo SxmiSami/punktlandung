@@ -2,15 +2,27 @@
    - Alle Daten liegen weiterhin lokal (funktioniert offline).
    - Mit Konto wird der komplette Stand als ein Datensatz pro Nutzer gespeichert.
    - Abgleich: beim Start, beim Zurückkehren in die App, alle 30 s und nach jeder Änderung.
-   - Konflikt: die zuletzt auf einem Gerät gemachte Änderung gewinnt. */
+   - Wurde auf beiden Seiten etwas geändert, werden die Stände zusammengeführt (js/merge.js):
+     Änderungen von beiden Geräten bleiben erhalten. Nur wenn dasselbe Feld auf beiden Seiten
+     verschieden geändert wurde, gewinnt die neuere Änderung.
+   - Hochladen nur, wenn der Stand im Konto noch der ist, den dieses Gerät zuletzt kannte –
+     sonst erst neu abholen und zusammenführen (kein Überschreiben fremder Änderungen). */
 (function () {
   const cfg = window.PL_CONFIG || {};
   const META_KEY = 'punktlandung:sync';
+  const BASE_KEY = 'punktlandung:sync-base'; // letzter gemeinsamer Stand mit dem Konto
   const S = PL.sync = { enabled: false, client: null, user: null, status: 'off', lastSync: null, error: null };
 
   let meta = {};
   try { meta = JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { meta = {}; }
   const saveMeta = () => { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { /* ignorieren */ } };
+  const loadBase = () => { try { return JSON.parse(localStorage.getItem(BASE_KEY)); } catch (e) { return null; } };
+  const saveBase = (d) => {
+    try { if (d == null) localStorage.removeItem(BASE_KEY); else localStorage.setItem(BASE_KEY, JSON.stringify(d)); }
+    catch (e) { try { localStorage.removeItem(BASE_KEY); } catch (e2) { /* ohne Basis wird beim Zusammenführen nichts gelöscht */ } }
+  };
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  const sheetOpen = () => !document.getElementById('sheetLayer').hidden;
 
   /* ---- Status-Anzeige ---- */
   PL.syncLabel = function () {
@@ -36,9 +48,12 @@
   const hasData = (st) => !!(st && Array.isArray(st.subjects) && st.subjects.length);
 
   /* Lokale Änderungen merken und hochladen */
+  let seq = 0; // zählt lokale Änderungen (auch während gerade hochgeladen wird)
   PL.onChange((opts) => {
     if (opts.fromRemote) return;
+    seq++;
     meta.dirty = true;
+    meta.changedAt = Date.now();
     saveMeta();
     if (S.user) schedulePush();
   });
@@ -54,10 +69,12 @@
   const table = () => S.client.from('user_data');
   const redirect = () => location.origin + location.pathname;
 
-  let busy = false, again = false;
-  S.syncNow = async function () {
+  let busy = false, again = false, conflicts = 0;
+  // opts.force: auch abgleichen, wenn gerade ein Fenster offen ist (beim Abmelden)
+  S.syncNow = async function (opts) {
+    const force = !!(opts && opts.force);
     if (!S.user) return;
-    if (!document.getElementById('sheetLayer').hidden) return; // während einer Eingabe nicht abgleichen
+    if (!force && sheetOpen()) return; // während einer Eingabe nicht abgleichen
     if (busy) { again = true; return; }
     if (!navigator.onLine) { setStatus('offline'); return; }
     busy = true;
@@ -65,22 +82,28 @@
     try {
       const { data: row, error } = await table().select('data, updated_at').eq('user_id', S.user.id).maybeSingle();
       if (error) throw error;
-      if (meta.userId !== S.user.id) { meta.userId = S.user.id; meta.remoteStamp = null; saveMeta(); }
+      if (meta.userId !== S.user.id) { meta.userId = S.user.id; meta.remoteStamp = null; saveBase(null); saveMeta(); }
 
+      let ok = true;
       if (!row) {
-        await push();
+        ok = await push(null);
       } else if (row.updated_at === meta.remoteStamp) {
-        if (meta.dirty) await push(); else setStatus('ok');
+        if (meta.dirty) ok = await push(row.updated_at); else setStatus('ok');
       } else if (meta.remoteStamp == null) {
         // erster Abgleich auf diesem Gerät
         if (hasData(PL.state) && hasData(row.data)) { setStatus('ok'); askWhichData(row); }
-        else if (hasData(PL.state)) await push();
+        else if (hasData(PL.state)) ok = await push(row.updated_at);
         else apply(row);
       } else if (meta.dirty) {
-        await push();                      // lokale Änderung ist die neueste
+        // auf beiden Seiten etwas geändert → zusammenführen statt überschreiben
+        if (!force && sheetOpen()) setStatus('ok');
+        else { mergeRemote(row); ok = await push(row.updated_at); }
       } else {
         apply(row);
       }
+      if (ok) conflicts = 0;
+      else if (++conflicts <= 3) again = true; // ein anderes Gerät war schneller → neu abholen und zusammenführen
+      else { conflicts = 0; setStatus('error', 'Abgleich gerade nicht möglich – wird später erneut versucht'); }
     } catch (e) {
       setStatus(navigator.onLine ? 'error' : 'offline', e && e.message);
     } finally {
@@ -89,22 +112,45 @@
     }
   };
 
-  async function push() {
-    const { data, error } = await table()
-      .upsert({ user_id: S.user.id, data: PL.state, updated_at: new Date().toISOString() })
-      .select('updated_at').single();
-    if (error) throw error;
-    meta.remoteStamp = data.updated_at;
-    meta.dirty = false;
+  /* Hochladen – aber nur, wenn im Konto noch der Stand `expected` liegt.
+     Gibt false zurück, wenn inzwischen ein anderes Gerät etwas hochgeladen hat. */
+  async function push(expected) {
+    const mySeq = seq;
+    const snap = clone(PL.state);
+    const stamp = new Date().toISOString();
+    const res = expected == null
+      ? await table().insert({ user_id: S.user.id, data: snap, updated_at: stamp }).select('updated_at').maybeSingle()
+      : await table().update({ data: snap, updated_at: stamp }).eq('user_id', S.user.id).eq('updated_at', expected).select('updated_at').maybeSingle();
+    if (res.error) {
+      if (res.error.code === '23505') return false; // Datensatz gibt es schon
+      throw res.error;
+    }
+    if (!res.data) return false;
+    meta.remoteStamp = res.data.updated_at;
+    saveBase(snap);
+    if (seq === mySeq) meta.dirty = false; else schedulePush(); // während des Hochladens geändert
     saveMeta();
     setStatus('ok');
+    return true;
+  }
+
+  function mergeRemote(row) {
+    const remote = row.data || PL.emptyState();
+    const localWins = (meta.changedAt || 0) > Date.parse(row.updated_at);
+    const merged = PL.mergeStates(loadBase(), clone(PL.state), remote, localWins);
+    // ab jetzt ist der Konto-Stand die gemeinsame Basis; die eigenen Änderungen bleiben „ungespeichert“
+    meta.remoteStamp = row.updated_at;
+    saveBase(remote);
+    saveMeta();
+    PL.replaceState(merged, { fromRemote: true });
   }
 
   function apply(row) {
     // Nicht mitten in einer Eingabe die Daten austauschen – nächster Abgleich holt es nach
-    if (!document.getElementById('sheetLayer').hidden) { setStatus('ok'); return; }
+    if (sheetOpen()) { setStatus('ok'); return; }
     meta.remoteStamp = row.updated_at;
     meta.dirty = false;
+    saveBase(row.data || null);
     saveMeta();
     PL.replaceState(row.data || PL.emptyState(), { fromRemote: true });
     setStatus('ok');
@@ -122,7 +168,10 @@
         sh.querySelector('[data-pick="remote"]').onclick = () => { PL.closeSheet(); setTimeout(() => { apply(row); PL.toast('Daten aus deinem Konto geladen'); }, 230); };
         sh.querySelector('[data-pick="local"]').onclick = async () => {
           PL.closeSheet();
-          try { setStatus('syncing'); await push(); PL.toast('Daten dieses Geräts gespeichert'); } catch (e) { setStatus('error', e.message); }
+          try {
+            setStatus('syncing');
+            if (await push(row.updated_at)) PL.toast('Daten dieses Geräts gespeichert'); else S.syncNow();
+          } catch (e) { setStatus('error', e.message); }
         };
       },
     });
@@ -171,10 +220,11 @@
     return error ? germanError(error) : null;
   };
   S.signOut = async () => {
-    if (meta.dirty && S.user && navigator.onLine) { try { await push(); } catch (e) { /* trotzdem abmelden */ } }
+    if (meta.dirty && meta.remoteStamp != null && S.user && navigator.onLine) { try { await S.syncNow({ force: true }); } catch (e) { /* trotzdem abmelden */ } }
     await S.client.auth.signOut();
     meta = {};
     saveMeta();
+    saveBase(null);
     PL.replaceState(PL.emptyState(), { fromRemote: true });
   };
 

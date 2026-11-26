@@ -3,6 +3,12 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.9.1
+- **Synchronisierung repariert**: Ein Gerät mit altem Stand (z. B. das iPad nach Änderungen am PC) konnte beim Öffnen seinen veralteten Stand hochladen und damit die neuen Daten überschreiben. Jetzt werden die Stände **zusammengeführt** – Änderungen von beiden Geräten bleiben erhalten (neue/geänderte/gelöschte Noten, Fächer, Termine, Aufgaben, Dateien, Einstellungen). Nur wenn dasselbe Feld auf beiden Geräten verschieden geändert wurde, gilt die neuere Änderung
+- Hochgeladen wird nur noch, wenn im Konto kein neuerer Stand liegt – sonst holt die App ihn zuerst ab und führt zusammen (auch wenn zwei Geräte gleichzeitig speichern)
+- Änderungen, die genau während des Hochladens gemacht werden, gehen nicht mehr verloren
+- Untis-Hausaufgaben/Klausuren, die zwei Geräte gleichzeitig übernehmen, erscheinen nicht doppelt
+
 ## 0.9.0
 - **Lernzettel heißt jetzt „Dateien“** (alte Links auf `#/lernzettel` funktionieren weiter)
 - Für jede Datei festlegen: **Fach**, **Klausur** (passend zum Fach, kommende zuerst) und ob sie **für alle geteilt** wird – beim Hochladen oder später in den Details
