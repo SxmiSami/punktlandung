@@ -3,6 +3,17 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.12.0
+- **Termine neu gestaltet** – auf einen Blick sehen, wann welche Prüfung ansteht:
+  - **Nächste Prüfung** groß oben: Fach, Tag, Stunde, Uhrzeit, Raum und ein Countdown in Tagen. Darunter die nächsten drei Prüfungen
+  - **Monatskalender** mit KW: jede Prüfung als Kästchen in Fachfarbe. Klausuren haben einen gelben, Abiprüfungen einen lila Rand, Tests und Referate sind heller, Sonstiges ist nur umrandet. Monate per Pfeil, Wischen oder Pfeiltasten wechseln
+  - Tippen auf einen Tag zeigt seine Termine und fällige Hausaufgaben. Von dort lässt sich direkt ein Termin an diesem Tag eintragen
+  - **Liste nach Monaten** mit Wochentag, Stunde, Uhrzeit, Raum und Anzahl der Dateien zur Klausur. Filter: Alle, Klausuren, Tests & Referate, Sonstiges
+  - Vergangene Termine sind eingeklappt
+- **Stundenplan**: Termine der Woche stehen in einer eigenen Zeile über den Stunden – auch Referate und Termine ohne passende Stunde
+- Im Termin steht oben, wann genau er ist (Tag, Stunde, Uhrzeit, Raum, Countdown)
+- Die Übersicht zeigt Termine im gleichen neuen Stil
+
 ## 0.11.0
 - **Belastung**: Neue Statistik auf der Übersicht (nächste 6 Wochen) und oben bei den Terminen (nächste 8 Wochen). Jeder Tag ist ein Kästchen, das umso kräftiger gefärbt ist, je mehr ansteht – so siehst du stressige Wochen früh
 - Gezählt werden Abiprüfungen (4), Klausuren (3), Tests und Referate (je 2) und offene Aufgaben (je 1). Jede Woche bekommt eine Stufe: frei, ruhig, normal, viel oder stressig

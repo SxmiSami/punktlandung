@@ -157,7 +157,7 @@
     const today = PL.today();
     const upcoming = st().events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
     const missed = st().events.filter((e) => e.date < today && ['Klausur', 'Test', 'Referat'].includes(e.type)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 2);
-    const evRows = upcoming.map(eventRow).join('') + missed.map((e) => missedRow(e)).join('');
+    const evRows = upcoming.map((e) => PL.eventRow(e)).join('') + missed.map((e) => missedRow(e)).join('');
 
     const recent = st().grades.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
     const subs = PL.sortedSubjects();
@@ -227,16 +227,6 @@
   }
   PL.gradeRow = gradeRow;
 
-  function eventRow(e) {
-    const sub = PL.subject(e.subjectId);
-    const n = PL.daysUntil(e.date);
-    const cls = n <= 0 ? 'today' : n <= 3 ? 'soon' : '';
-    return `<button class="row row-click" data-action="open-event" data-id="${e.id}" style="text-align:left;padding:10px 8px">
-      ${PL.dateBox(e.date)}
-      <span class="row-main"><span class="row-title" style="display:block">${esc(e.title || e.type)}</span>
-      <span class="row-sub" style="display:block">${sub ? esc(sub.short) + ' · ' : ''}${esc(e.type)}</span></span>
-      <span class="countdown ${cls}">${PL.relDays(n)}</span></button>`;
-  }
   function missedRow(e) {
     const sub = PL.subject(e.subjectId);
     return `<div class="row" style="padding:10px 8px">
@@ -454,31 +444,7 @@
     if (out) out.innerHTML = goalResult(PL.ui.goal);
   };
 
-  /* ================= Termine ================= */
-  PL.views.events = function (seg) {
-    const today = PL.today();
-    const evs = st().events.slice().sort((a, b) => a.date.localeCompare(b.date));
-    const up = evs.filter((e) => e.date >= today);
-    const past = evs.filter((e) => e.date < today).reverse();
-    const week = up.filter((e) => PL.daysUntil(e.date) <= 7), later = up.filter((e) => PL.daysUntil(e.date) > 7);
-    const sec = (title, arr, fn) => arr.length ? `<div class="sec-title">${title}<span>${arr.length}</span></div><section class="card" style="padding:8px 10px;margin-bottom:16px"><div class="list">${arr.map(fn).join('')}</div></section>` : '';
-    return `<div class="page view">
-      ${pageHead(seg || `${up.length} anstehend`, 'Kalender', `<button class="btn btn-primary" data-action="add-event">${ic('plus', 'i-sm')} Termin</button>`)}
-      <div style="max-width:760px">
-      ${evs.length || st().tasks.some((t) => !t.done) ? `<div style="margin-bottom:16px">${PL.workloadCard(8)}</div>` : ''}
-      ${!evs.length ? `<div class="empty"><b>Keine Termine</b>Trag Klausuren, Tests und Abiprüfungen ein – sie erscheinen mit Countdown in deiner Übersicht.<br><button class="btn btn-primary btn-sm" data-action="add-event">${ic('plus', 'i-sm')} Ersten Termin anlegen</button></div>` : ''}
-      ${sec('Nächste 7 Tage', week, eventRow)}
-      ${sec('Später', later, eventRow)}
-      ${sec('Vergangen', past, (e) => {
-        const sub = PL.subject(e.subjectId);
-        return `<div class="row" style="padding:10px 8px">${PL.dateBox(e.date)}
-          <button class="row-main" data-action="open-event" data-id="${e.id}" style="text-align:left"><span class="row-title" style="display:block">${esc(e.title || e.type)}</span>
-          <span class="row-sub" style="display:block">${sub ? esc(sub.short) + ' · ' : ''}${esc(e.type)} · ${PL.relDays(PL.daysUntil(e.date))}</span></button>
-          <button class="btn btn-sm" data-action="event-grade" data-id="${e.id}">${ic('plus', 'i-sm')} Note</button></div>`;
-      })}
-      </div>
-    </div>`;
-  };
+  /* Termine: siehe termine.js */
 
   /* ================= Konto ================= */
   function accountCard() {

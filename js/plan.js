@@ -222,6 +222,9 @@
     if (PL.untis && !edit) PL.untis.ensureWeek(monday);
     const col = (d) => `${2 + 2 * d} / span 2`;
     const slide = PL.ui.planSlide; PL.ui.planSlide = null;
+    // Termine (Klausuren, Tests, Referate …) als eigene Zeile über den Stunden
+    const evCells = edit || !PL.weekEventCell ? [] : DAYS.map((_, i) => PL.weekEventCell(PL.isoDate(PL.addDays(monday, i))));
+    const ev = evCells.some(Boolean) ? 1 : 0;
 
     let cells = '';
     cells += `<div class="tt-corner">${wt ? `<span class="ab-badge">${wt}</span>` : ''}</div>`;
@@ -229,14 +232,16 @@
       const date = PL.addDays(monday, i);
       const isT = PL.isoDate(date) === today;
       cells += `<div class="tt-day ${isT ? 'today' : ''}" style="grid-column:${col(i)}"><span>${d}</span><b>${date.getDate()}</b></div>`;
+      if (ev) cells += `<div class="tt-evs" style="grid-row:2;grid-column:${col(i)}">${evCells[i]}</div>`;
     });
+    if (ev) cells += `<div class="tt-evs-lbl" style="grid-row:2">${ic('calendar', 'i-sm')}</div>`;
     for (let p = 1; p <= n; p++) {
       const per = s.periods[p - 1];
-      cells += `<div class="tt-time" style="grid-row:${p + 1}"><b>${p}</b><span>${esc(per.start)}</span></div>`;
+      cells += `<div class="tt-time" style="grid-row:${p + 1 + ev}"><b>${p}</b><span>${esc(per.start)}</span></div>`;
       for (let d = 0; d < 5; d++) {
         cells += edit
-          ? `<button class="tt-slot" style="grid-row:${p + 1};grid-column:${col(d)}" data-action="add-lesson" data-day="${d}" data-period="${p}" aria-label="${DAYS[d]} ${p}. Stunde hinzufügen">${ic('plus', 'i-sm')}</button>`
-          : `<div class="tt-cell" style="grid-row:${p + 1};grid-column:${col(d)}"></div>`;
+          ? `<button class="tt-slot" style="grid-row:${p + 1 + ev};grid-column:${col(d)}" data-action="add-lesson" data-day="${d}" data-period="${p}" aria-label="${DAYS[d]} ${p}. Stunde hinzufügen">${ic('plus', 'i-sm')}</button>`
+          : `<div class="tt-cell" style="grid-row:${p + 1 + ev};grid-column:${col(d)}"></div>`;
       }
     }
     const nowM = nowMin();
@@ -258,7 +263,7 @@
         const gc = it.lanes === 2 ? `${2 + 2 * d + it.lane} / span 1` : col(d);
         const tch = teacherHtml(it);
         const label = it.status === 'exam' ? 'Klausur' : it.status === 'eva' ? 'EVA' : it.status === 'off' ? 'Entfällt' : it.status === 'chg' ? (it.newRoom ? 'Raum' : it.kind === 'extra' ? 'Änderung' : 'Vertretung') : '';
-        cells += `<button class="tt-block st-${it.status || 'ok'} ${live ? 'live' : ''} ${it.lanes === 2 ? 'half' : ''}" style="--c:${it.color};grid-column:${gc};grid-row:${it.from + 1} / span ${Math.min(it.to, n) - it.from + 1}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
+        cells += `<button class="tt-block st-${it.status || 'ok'} ${live ? 'live' : ''} ${it.lanes === 2 ? 'half' : ''}" style="--c:${it.color};grid-column:${gc};grid-row:${it.from + 1 + ev} / span ${Math.min(it.to, n) - it.from + 1}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
           <b>${esc(it.short)}</b>${label ? `<em>${label}</em>` : ''}${it.room || it.newRoom ? `<span class="rm">${roomHtml(it)}</span>` : ''}${tch ? `<span class="tch">${tch}</span>` : ''}${it.week ? `<i class="wk">${it.week}</i>` : ''}${it.tasks ? `<i class="hw" title="Hausaufgabe fällig">${ic('tasks', 'i-sm')}${it.tasks.length > 1 ? it.tasks.length : ''}</i>` : ''}
         </button>`;
       });
@@ -266,7 +271,7 @@
 
     const range = `${monday.getDate()}. ${PL.MONTHS[monday.getMonth()]} – ${friday.getDate()}. ${PL.MONTHS[friday.getMonth()]}`;
     const legend = PL.untis && PL.untis.connected() && !edit
-      ? `<div class="tt-legend"><span class="lg off">Entfall</span><span class="lg moved">Raum-/Lehreränderung</span><span class="lg eva">EVA</span><span class="lg exam">Klausur</span><span class="lg hw">${ic('tasks', 'i-sm')} Hausaufgabe</span></div>` : '';
+      ? `<div class="tt-legend"><span class="lg off">Entfall</span><span class="lg moved">Raum-/Lehreränderung</span><span class="lg eva">EVA</span><span class="lg exam">Klausur</span>${ev ? `<span class="lg ev">${ic('calendar', 'i-sm')} Termine der Woche</span>` : ''}<span class="lg hw">${ic('tasks', 'i-sm')} Hausaufgabe</span></div>` : '';
     const hint = edit
       ? `Tippe auf ein leeres Feld, um eine Stunde einzutragen, oder auf eine Stunde, um sie zu ändern. Doppelstunden werden automatisch zusammengefasst.${s.abWeeks ? '' : ' A/B-Wochen kannst du in den Einstellungen einschalten.'}`
       : `Tippe auf eine Stunde für Details, wische für die nächste Woche.${PL.untis && PL.untis.connected() ? (PL.untis.error ? ` <span style="color:var(--danger)">Untis: ${esc(PL.untis.error)}</span>` : ' Änderungen kommen live aus Untis.') : ' Mit Untis (Einstellungen) siehst du hier auch Ausfälle und Klausuren.'}`;
@@ -281,7 +286,7 @@
       </div>
       ${edit && st().lessons.length ? `<div class="edit-banner">${ic('edit', 'i-sm')} Bearbeiten – Änderungen gelten jede Woche</div>` : ''}
       <section class="card tt-card ${edit ? 'is-edit' : ''} ${slide ? 'slide-' + slide : ''}" data-swipe-week>
-        <div class="tt" style="grid-template-rows:auto repeat(${n}, var(--tt-row))">${cells}</div>
+        <div class="tt" style="grid-template-rows:auto${ev ? ' auto' : ''} repeat(${n}, var(--tt-row))">${cells}</div>
       </section>
       ${legend}
       <p class="hint" style="margin:12px 4px 0">${hint}</p>
@@ -326,10 +331,12 @@
     PL.render();
   };
   (function swipeWeeks() {
-    let x0 = null, y0 = 0, t0 = 0, horizontal = false;
+    let x0 = null, y0 = 0, t0 = 0, horizontal = false, target = null, step = null;
     document.addEventListener('touchstart', (e) => {
-      const card = e.target.closest('[data-swipe-week]');
+      const card = e.target.closest('[data-swipe-week], [data-swipe-month]');
       if (!card || e.touches.length !== 1) { x0 = null; return; }
+      target = card.matches('[data-swipe-month]') ? card : card.querySelector('.tt');
+      step = card.matches('[data-swipe-month]') ? PL.changeMonth : PL.changeWeek;
       x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); horizontal = false;
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
@@ -337,7 +344,7 @@
       const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
       if (!horizontal && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { x0 = null; return; }  // scrollt senkrecht
       if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) horizontal = true;
-      const card = document.querySelector('[data-swipe-week] .tt');
+      const card = target;
       if (horizontal && card) { card.style.transition = 'none'; card.style.transform = `translateX(${dx * 0.35}px)`; card.style.opacity = String(1 - Math.min(0.4, Math.abs(dx) / 600)); }
     }, { passive: true });
     document.addEventListener('touchend', (e) => {
@@ -345,19 +352,20 @@
       const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
       const fast = Date.now() - t0 < 700;
       x0 = null;
-      const card = document.querySelector('[data-swipe-week] .tt');
+      const card = target;
       const reset = () => { if (card) { card.style.transition = 'transform .18s ease, opacity .18s ease'; card.style.transform = ''; card.style.opacity = ''; } };
       if (horizontal && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.3 && (fast || Math.abs(dx) > 120)) {
         // nach links wischen = nächste Woche
-        PL.changeWeek(dx < 0 ? 1 : -1);
+        step(dx < 0 ? 1 : -1);
       } else reset();
     });
     document.addEventListener('keydown', (e) => {
-      if (!document.querySelector('[data-swipe-week]') || !document.getElementById('sheetLayer').hidden) return;
+      const go = document.querySelector('[data-swipe-week]') ? PL.changeWeek : document.querySelector('[data-swipe-month]') ? PL.changeMonth : null;
+      if (!go || !document.getElementById('sheetLayer').hidden) return;
       const tag = (e.target.tagName || '').toLowerCase();
       if (['input', 'textarea', 'select'].includes(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === 'ArrowRight') { e.preventDefault(); PL.changeWeek(1); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); PL.changeWeek(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
     });
   })();
 

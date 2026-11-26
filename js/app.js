@@ -119,7 +119,7 @@
     'edit-subject': (d) => PL.subjectSheet(d.id),
     'open-cell': (d) => PL.cellSheet(d.subject, d.sem),
     'open-exam': (d) => PL.examSheet(d.slot),
-    'add-event': () => PL.eventSheet(),
+    'add-event': (d) => PL.eventSheet(null, { date: d.date }),
     'open-event': (d) => PL.eventSheet(d.id),
     'event-grade': (d) => {
       const e = PL.state.events.find((x) => x.id === d.id);

@@ -203,12 +203,14 @@
       <button type="button" class="btn btn-sm" data-action="add-note" data-exam="${ex.id}" data-subject="${ex.subjectId || ''}" style="margin-bottom:14px">${ic('upload', 'i-sm')} Datei hinzufügen</button>`;
   }
 
-  PL.eventSheet = function (id) {
+  PL.eventSheet = function (id, opts = {}) {
     const ex = id ? st().events.find((x) => x.id === id) : null;
     const subs = PL.sortedSubjects();
-    const f = ex ? Object.assign({}, ex) : { subjectId: subs[0] ? subs[0].id : null, type: 'Klausur', title: '', date: PL.isoDate(new Date(Date.now() + 7 * 864e5)) };
+    const f = ex ? Object.assign({}, ex) : { subjectId: subs[0] ? subs[0].id : null, type: 'Klausur', title: '', date: opts.date || PL.isoDate(new Date(Date.now() + 7 * 864e5)) };
+    // Wann genau? Tag, Stunde, Uhrzeit, Raum und Countdown
+    const when = ex && PL.eventDayLabel ? [esc(PL.eventDayLabel(ex.date)), PL.eventSlotText(ex), PL.relDays(PL.daysUntil(ex.date))].filter(Boolean).join(' · ') : '';
     const html = `
-      ${PL.sheetHead(ex ? 'Termin bearbeiten' : 'Neuer Termin')}
+      ${PL.sheetHead(ex ? esc(PL.eventName ? PL.eventName(ex) : 'Termin bearbeiten') : 'Neuer Termin', when)}
       <div class="field"><span class="field-label">Art</span><div class="seg" data-seg="type" style="display:flex">${segHtml(PL.EVENT_TYPES.map((t) => [t, t]), f.type)}</div></div>
       <div class="field"><label for="evSub">Fach</label><select id="evSub" class="select"><option value="">Ohne Fach</option>${subs.map((s) => `<option value="${s.id}" ${s.id === f.subjectId ? 'selected' : ''}>${esc(s.short)} · ${esc(s.name)}</option>`).join('')}</select></div>
       <div class="field-row">
