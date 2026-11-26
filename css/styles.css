@@ -1191,3 +1191,37 @@ button.lesson-row { width: 100%; text-align: left; }
 @keyframes slideNext { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
 @keyframes slidePrev { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tt-card.slide-next .tt, .tt-card.slide-prev .tt { animation: none; } }
+
+/* ---------- Neuigkeiten ---------- */
+.bell-badge {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
+  background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 800; font-style: normal;
+  display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg);
+}
+.feed-row { padding: 10px 6px; }
+.feed-ic {
+  width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center;
+  color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+.feed-ic .i { width: 20px; height: 20px; }
+.feed-row.ch-cancel .feed-ic { --c: var(--danger) !important; }
+.feed-row.ch-room .feed-ic, .feed-row.ch-teacher .feed-ic, .feed-row.ch-eva .feed-ic { --c: var(--t1) !important; }
+.feed-row .row-title { font-weight: 600; }
+.feed-row.unread .row-title { font-weight: 800; }
+.feed-row.unread .row-sub { color: var(--text-2); }
+.feed-time { font-size: 12px; color: var(--muted); font-weight: 600; flex: none; }
+.feed-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2); flex: none; }
+.feed-clip { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 800; color: var(--accent-2); flex: none; }
+.feed-chips .chip-n { font-size: 11px; margin-left: 4px; padding: 0 6px; border-radius: 99px; background: var(--accent); color: #fff; }
+.feed-text { white-space: pre-wrap; word-break: break-word; line-height: 1.5; margin: 0 0 12px; font-size: 15px; }
+.feed-text a { color: var(--accent-2); text-decoration: underline; word-break: break-all; }
+.feed-text.muted { color: var(--text-2); font-size: 14px; }
+.feed-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0 0 14px; }
+.feed-meta > div { padding: 9px 12px; border-radius: 12px; background: var(--card-2); min-width: 0; }
+.feed-meta span { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.feed-meta b { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.feed-file { padding: 9px 2px; }
+.feed-file-btns { display: flex; gap: 6px; flex: none; }
+.feed-file-btns .btn { padding: 0 11px; }
+.icon-btn.spin .i { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

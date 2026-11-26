@@ -149,7 +149,126 @@ class Session {
     return await res.json();
   }
 
+  /* Manche Bereiche (Mitteilungen, Nachrichten) wollen zusätzlich einen Zugangs-Token */
+  token = '';
+  async bearer() {
+    if (this.token) return this.token;
+    const res = await fetch(`${this.base}/WebUntis/api/token/new`, { headers: { Cookie: this.cookie(), Accept: 'text/plain, application/json' }, redirect: 'manual' });
+    if (!res.ok) throw new Error(`Token HTTP ${res.status}`);
+    let t = (await res.text()).trim();
+    if (t.startsWith('"')) { try { t = JSON.parse(t); } catch (_) { /* so lassen */ } }
+    if (!t || t.length < 20 || t.startsWith('<') || t.startsWith('{')) throw new Error('Kein Token');
+    return (this.token = t);
+  }
+  async getAuth(path: string, query: Record<string, string | number> = {}) {
+    const tok = await this.bearer();
+    const q = new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)]));
+    const res = await fetch(`${this.base}${path}${Object.keys(query).length ? '?' + q : ''}`, {
+      headers: { Cookie: this.cookie(), Accept: 'application/json', Authorization: `Bearer ${tok}` }, redirect: 'manual',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  }
+
   async logout() { try { await this.rpc('logout'); } catch (_) { /* egal */ } }
+}
+
+/* ---------- Texte & Anhänge ---------- */
+/* HTML aus Untis → lesbarer Text mit Zeilenumbrüchen, Links bleiben als Adresse erhalten */
+export function cleanText(html: unknown): string {
+  let s = String(html == null ? '' : html);
+  s = s.replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => {
+    const l = String(label).replace(/<[^>]*>/g, '').trim();
+    return !l || l === href ? ` ${href} ` : `${l} (${href})`;
+  });
+  s = s.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|h\d|tr)>/gi, '\n').replace(/<li[^>]*>/gi, '\n• ').replace(/<[^>]*>/g, '');
+  s = s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCodePoint(parseInt(n, 16)));
+  return s.split('\n').map((l) => l.replace(/[ \t\f\v]+/g, ' ').trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+const attOf = (a: Json) => ({
+  id: a && a.id != null ? String(a.id) : '',
+  name: String((a && (a.name || a.fileName || a.filename || a.title)) || 'Datei'),
+  url: String((a && (a.url || a.src || a.downloadUrl || a.link)) || ''),
+});
+const attList = (x: unknown) => (Array.isArray(x) ? x.filter((a) => a && typeof a === 'object').map(attOf) : []);
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 120);
+
+function b64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+const MAX_FILE = 20 * 1024 * 1024;
+
+/* Datei herunterladen: entweder direkt Bytes oder JSON mit „downloadUrl“ (Speicher-Link) */
+async function fetchFile(s: Session, url: string, extra: Record<string, string> = {}, depth = 0): Promise<{ bytes: Uint8Array; type: string } | null> {
+  const u = new URL(url, s.base);
+  const own = u.host === new URL(s.base).host;
+  // Nur Untis selbst und dessen Datei-Speicher – kein offener Vermittler für beliebige Seiten
+  if (!own && !(u.protocol === 'https:' && /(\.webuntis\.com|\.amazonaws\.com|\.untis\.at|\.untis\.com)$/.test(u.hostname))) return null;
+  const headers: Record<string, string> = { ...extra };
+  if (own) { headers.Cookie = s.cookie(); headers.Accept = '*/*'; if (s.token) headers.Authorization = `Bearer ${s.token}`; }
+  const res = await fetch(u.toString(), { headers, redirect: own ? 'manual' : 'follow' });
+  if (res.status >= 300 && res.status < 400 && res.headers.get('location') && depth < 3) return fetchFile(s, res.headers.get('location')!, {}, depth + 1);
+  if (!res.ok) return null;
+  const type = (res.headers.get('content-type') || '').split(';')[0].trim();
+  if (Number(res.headers.get('content-length') || 0) > MAX_FILE) throw new UntisError('Die Datei ist zu groß (über 20 MB). Öffne sie direkt in Untis.', 413);
+  if (type === 'application/json') {
+    const j = await res.json().catch(() => null);
+    const d = (j && (j.data || j)) || {};
+    if (d.downloadUrl && depth < 3) {
+      const h: Record<string, string> = {};
+      (d.additionalHeaders || []).forEach((x: Json) => { if (x && x.key) h[x.key] = String(x.value); });
+      return fetchFile(s, d.downloadUrl, h, depth + 1);
+    }
+    return null;
+  }
+  if (type === 'text/html') return null;   // Anmeldeseite o. Ä.
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.length > MAX_FILE) throw new UntisError('Die Datei ist zu groß (über 20 MB). Öffne sie direkt in Untis.', 413);
+  return { bytes, type: type || 'application/octet-stream' };
+}
+
+/* ---------- Einzelne Abrufe: Mitteilung öffnen, Datei laden ---------- */
+async function runAction(s: Session, body: Json) {
+  if (body.action === 'message') {
+    const id = String(body.id || '');
+    if (!/^[\w-]{1,64}$/.test(id)) throw new UntisError('Ungültige Mitteilung.');
+    let j: Json;
+    try { j = await s.getAuth(`/WebUntis/api/rest/view/v1/messages/${encodeURIComponent(id)}`); }
+    catch (e) { throw new UntisError(`Die Mitteilung konnte nicht geladen werden (${errMsg(e)}).`, 502); }
+    const m = (j && (j.data || j)) || {};
+    return {
+      ok: true,
+      message: {
+        id, subject: cleanText(m.subject), content: cleanText(m.content || m.text || m.body || ''),
+        sender: typeof m.sender === 'string' ? m.sender : (m.sender && m.sender.displayName) || '',
+        at: m.sentDateTime || m.dateTime || '',
+        files: attList(m.storageAttachments).concat(attList(m.attachments)),
+      },
+    };
+  }
+  if (body.action === 'file') {
+    const f = body.file || {};
+    const id = String(f.id || '');
+    const kind = String(f.kind || '');
+    if (id && !/^[\w-]{1,64}$/.test(id)) throw new UntisError('Ungültige Datei.');
+    const tries: string[] = [];
+    if (kind === 'msg' && id) tries.push(`/WebUntis/api/rest/view/v1/messages/${id}/attachmentstorageurl`);
+    if (f.url) tries.push(String(f.url));
+    if (kind !== 'msg' && id) tries.push(`/WebUntis/api/homeworks/attachments/${id}`, `/WebUntis/api/rest/view/v1/messages/${id}/attachmentstorageurl`);
+    if (!tries.length) throw new UntisError('Zu dieser Datei fehlt die Adresse.');
+    try { await s.bearer(); } catch (_) { /* geht manchmal auch ohne */ }
+    for (const t of tries) {
+      try {
+        const r = await fetchFile(s, t);
+        if (r) return { ok: true, name: String(f.name || 'Datei'), type: r.type, data: b64(r.bytes) };
+      } catch (e) { if (e instanceof UntisError) throw e; }
+    }
+    throw new UntisError('Untis gibt diese Datei nicht heraus. Öffne sie direkt in der Untis-App.', 404);
+  }
+  throw new UntisError('Unbekannte Aktion.');
 }
 
 /* ---------- Hauptlogik ---------- */
@@ -160,14 +279,18 @@ export async function run(body: Json, opts: { base?: string } = {}) {
   if (!opts.base && !/^[a-z0-9-]+(\.[a-z0-9-]+)*\.webuntis\.com$/.test(server)) throw new UntisError('Der Server muss auf „.webuntis.com“ enden, z. B. nessa.webuntis.com.');
   if (!school || !user) throw new UntisError('Schule und Benutzername fehlen.');
   if (!body.secret && !body.password) throw new UntisError('Schlüssel oder Passwort fehlt.');
+  const action = body.action ? String(body.action) : '';
   const from = String(body.from || ''), to = String(body.to || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) throw new UntisError('Ungültiger Zeitraum.');
-  if ((Date.parse(to) - Date.parse(from)) / 864e5 > 62) throw new UntisError('Höchstens zwei Monate auf einmal.');
+  if (!action) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) throw new UntisError('Ungültiger Zeitraum.');
+    if ((Date.parse(to) - Date.parse(from)) / 864e5 > 62) throw new UntisError('Höchstens zwei Monate auf einmal.');
+  }
 
   const s = new Session(opts.base || `https://${server}`, school);
   if (body.secret) await s.loginSecret(user, String(body.secret));
   else await s.loginPassword(user, String(body.password));
   try {
+    if (action) return await runAction(s, body);
     await s.ensurePerson();
 
     // Stundenraster: Montag (day 2) bevorzugt, sonst der Tag mit den meisten Stunden
@@ -233,21 +356,55 @@ export async function run(body: Json, opts: { base?: string } = {}) {
       try {
         const j = await s.getJson('/WebUntis/api/homeworks/lessons', range);
         const d = (j && j.data) || {};
-        const subj: Record<string, string> = {};
+        const subj: Record<string, string> = {}, teach: Record<string, string> = {};
         (d.lessons || []).forEach((l: Json) => { subj[l.id] = l.subject || ''; });
+        (d.teachers || []).forEach((t: Json) => { teach[t.id] = t.name || ''; });
         homework = (d.homeworks || []).map((h: Json) => ({
           id: h.id,
           subject: subj[h.lessonId] || '',
           date: h.date ? isoOf(h.date) : '',
           due: h.dueDate ? isoOf(h.dueDate) : '',
           text: String(h.text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
-          remark: h.remark || '',
+          full: cleanText(h.text),
+          remark: cleanText(h.remark),
+          teacher: teach[h.teacherId] || '',
           done: !!h.completed,
+          files: attList(h.attachments),
         }));
       } catch (_) { homework = null; }
     }
 
-    return { ok: true, name: s.name, timegrid, lessons, exams, homework };
+    // Für die Neuigkeiten: Mitteilungen und Tagesnachrichten (jedes für sich optional)
+    let feed: Json | null = null;
+    if (body.feed && typeof body.feed === 'object') {
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(body.feed.today || '') ? body.feed.today : new Date().toISOString().slice(0, 10);
+      const errors: Record<string, string> = {};
+      let messages: Json[] | null = null, news: Json[] | null = null;
+      try {
+        const j = await s.getAuth('/WebUntis/api/rest/view/v1/messages');
+        const list = (j && (j.incomingMessages || (j.data && j.data.incomingMessages))) || [];
+        messages = list.slice(0, 40).map((m: Json) => ({
+          id: String(m.id),
+          subject: cleanText(m.subject),
+          preview: cleanText(m.contentPreview || ''),
+          sender: typeof m.sender === 'string' ? m.sender : (m.sender && m.sender.displayName) || '',
+          at: m.sentDateTime || m.dateTime || '',
+          read: !!m.isMessageRead,
+          files: !!m.hasAttachments,
+        }));
+      } catch (e) { errors.messages = errMsg(e); }
+      try {
+        let j: Json;
+        try { j = await s.getAuth('/WebUntis/api/public/news/newsWidgetData', { date: ymd(day) }); }
+        catch (_) { j = await s.getJson('/WebUntis/api/public/news/newsWidgetData', { date: ymd(day) }); }
+        const d = (j && j.data) || {};
+        news = (d.messagesOfDay || []).map((m: Json) => ({ id: String(m.id), date: day, subject: cleanText(m.subject), text: cleanText(m.text), files: attList(m.attachments) }));
+        if (typeof d.systemMessage === 'string' && cleanText(d.systemMessage)) news.unshift({ id: 'sys-' + day, date: day, subject: 'Hinweis der Schule', text: cleanText(d.systemMessage), files: [] });
+      } catch (e) { errors.news = errMsg(e); }
+      feed = { messages, news, errors };
+    }
+
+    return { ok: true, name: s.name, timegrid, lessons, exams, homework, feed };
   } finally {
     await s.logout();
   }

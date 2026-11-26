@@ -13,6 +13,7 @@
   const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
   const write = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* voll */ } };
   U.creds = () => read(CRED);
+  U.lastFetch = () => { const at = (read(CACHE) || {}).fetchedAt; return at ? new Date(at).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; };
   U.connected = () => !!U.creds();
   const cache = () => read(CACHE) || { fetchedAt: 0, days: {} };
 
@@ -282,9 +283,12 @@
     inflight = (async () => {
       try {
         const s = st().settings;
-        const wantExtras = !opts.monday && (s.untisExams !== false || s.untisHomework !== false);
-        const data = await U.fetch(creds, from, to, wantExtras ? { extras: { from: PL.isoDate(PL.addDays(new Date(), -14)), to: PL.isoDate(PL.addDays(new Date(), 90)) } } : null);
+        // Klausuren & Hausaufgaben immer mitholen – die Neuigkeiten brauchen sie auch,
+        // wenn das Übernehmen in Termine/Aufgaben ausgeschaltet ist
+        const wantExtras = !opts.monday;
+        const data = await U.fetch(creds, from, to, wantExtras ? { extras: { from: PL.isoDate(PL.addDays(new Date(), -14)), to: PL.isoDate(PL.addDays(new Date(), 90)) }, feed: { today: PL.today() } } : null);
         if (wantExtras) U.applyExtras(data);
+        if (wantExtras && PL.feed) { try { PL.feed.ingest(data, { from, to }); } catch (e) { console.error(e); } }
         const next = cache();
         if (wantExtras && Array.isArray(data.exams)) next.exams = data.exams;
         next.days = next.days || {};
@@ -404,6 +408,24 @@
       </div>`, {
       onMount(sh) { sh.querySelectorAll('[data-hw]').forEach((b) => { b.onclick = () => done(b.dataset.hw); }); },
     });
+  };
+
+  /* Einzelne Mitteilung öffnen (erst beim Antippen – Untis merkt sie dann als gelesen) */
+  U.message = async function (id) {
+    const creds = U.creds();
+    if (!creds) throw new Error('Untis ist nicht verbunden.');
+    const data = await U.fetch(creds, '', '', { action: 'message', id });
+    return data.message;
+  };
+  /* Datei aus Untis laden → Blob */
+  U.file = async function (att) {
+    const creds = U.creds();
+    if (!creds) throw new Error('Untis ist nicht verbunden.');
+    const data = await U.fetch(creds, '', '', { action: 'file', file: { kind: att.kind, id: att.id, url: att.url, name: att.name } });
+    const bin = atob(data.data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: data.type && data.type !== 'application/octet-stream' ? data.type : PL.guessMime(att.name) || 'application/octet-stream' });
   };
 
   /* Kalender zeigt eine Woche, die noch nicht geladen ist → nachladen */

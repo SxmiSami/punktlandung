@@ -74,7 +74,7 @@ In der App dann unter **Einstellungen → Stundenplan → Untis** auf **„Verbi
 
 **Nach einem App-Update, das die Funktion ändert** (steht dann im CHANGELOG): In Supabase unter **Edge Functions → untis → Code** den Inhalt wieder durch die aktuelle [`supabase/functions/untis/index.ts`](supabase/functions/untis/index.ts) ersetzen und **„Deploy“** klicken. „Verify JWT“ bleibt aus.
 
-> Die Untis-Zugangsdaten bleiben nur auf deinem Gerät. Die Funktion bekommt sie bei jedem Abruf mitgeschickt, gibt sie an WebUntis weiter und speichert sie nicht. Sie spricht nur mit Adressen, die auf `.webuntis.com` enden.
+> Die Untis-Zugangsdaten bleiben nur auf deinem Gerät. Die Funktion bekommt sie bei jedem Abruf mitgeschickt, gibt sie an WebUntis weiter und speichert sie nicht. Sie spricht nur mit Adressen, die auf `.webuntis.com` enden – und beim Herunterladen von Dateien aus Untis mit dem Datei-Speicher, auf den Untis selbst verweist.
 
 ## Danach
 

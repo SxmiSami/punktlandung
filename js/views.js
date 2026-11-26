@@ -6,6 +6,7 @@
 
   PL.NAV = [
     { id: '', label: 'Übersicht', icon: 'home' },
+    { id: 'neu', label: 'Neuigkeiten', icon: 'bell', noTab: true },
     { id: 'faecher', label: 'Fächer', icon: 'layers' },
     { id: 'plan', label: 'Kalender', icon: 'calendar' },
     { id: 'aufgaben', label: 'Aufgaben', icon: 'tasks' },
@@ -162,9 +163,10 @@
     const subs = PL.sortedSubjects();
 
     return `<div class="page view">
-      ${pageHead(`${semPill()}<span>${greet}</span>`, name, settingsBtnHtml())}
+      ${pageHead(`${semPill()}<span>${greet}</span>`, name, (PL.feedBell ? PL.feedBell() : '') + settingsBtnHtml())}
       <div class="grid grid-dash">
         <div class="span-2">${heroCard({ link: true })}</div>
+        ${PL.feedCard ? PL.feedCard() : ''}
 
         <section class="card">
           <div class="card-head"><div><h2 class="card-title">${ic('trend')} Notenschnitt</h2><div class="card-sub">LK doppelt gewichtet</div></div></div>

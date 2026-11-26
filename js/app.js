@@ -19,8 +19,10 @@
     const hidden = r.name === 'setup' || !PL.state.subjects.length;
     const openTasks = PL.state.tasks.filter((t) => !t.done).length;
     const unread = PL.chat ? PL.chat.unread : 0;
+    const news = PL.feed ? PL.feed.unread() : 0;
     const nav = PL.NAV.filter((n) => n.id !== 'chat' || (PL.chat && PL.chat.available()));
-    const count = (n) => (n.id === 'aufgaben' && openTasks ? `<span class="count">${openTasks}</span>` : n.id === 'chat' && unread ? `<span class="count badge">${unread > 99 ? '99+' : unread}</span>` : '');
+    const big = (v) => `<span class="count badge">${v > 99 ? '99+' : v}</span>`;
+    const count = (n) => (n.id === 'aufgaben' && openTasks ? `<span class="count">${openTasks}</span>` : n.id === 'chat' && unread ? big(unread) : n.id === 'neu' && news ? big(news) : '');
     document.getElementById('sideNav').innerHTML = nav.map((n) =>
       `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}${count(n)}</a>`).join('');
     const ver = document.getElementById('sideVersion');
@@ -30,10 +32,13 @@
     if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
-    const badge = (n) => { const v = n.id === 'aufgaben' ? openTasks : n.id === 'chat' ? unread : 0; return v ? `<i class="tab-badge">${v > 99 ? '99+' : v}</i>` : ''; };
-    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.tab || n.label}</span>${badge(n)}</a>`;
-    tb.innerHTML = nav.map(tab).join('');
-    tb.dataset.n = nav.length;
+    // Neuigkeiten haben unten keinen eigenen Reiter: ihr Zähler hängt an „Übersicht“
+    const badge = (n) => { const v = n.id === 'aufgaben' ? openTasks : n.id === 'chat' ? unread : n.id === '' ? news : 0; return v ? `<i class="tab-badge">${v > 99 ? '99+' : v}</i>` : ''; };
+    const tabActive = active === 'neu' ? '' : active;
+    const tabs = nav.filter((n) => !n.noTab);
+    const tab = (n) => `<a class="tab ${tabActive === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)}<span>${n.tab || n.label}</span>${badge(n)}</a>`;
+    tb.innerHTML = tabs.map(tab).join('');
+    tb.dataset.n = tabs.length;
     // Schwebender +-Knopf: passt sich der aktuellen Seite an
     const fab = document.getElementById('fab');
     const fabAction = r.name === 'aufgaben' ? ['add-task', 'Aufgabe hinzufügen']
@@ -45,7 +50,7 @@
     fab.dataset.action = fabAction[0];
     fab.setAttribute('aria-label', fabAction[1]);
     fab.title = fabAction[1];
-    fab.hidden = hidden || r.name === 'einstellungen' || (r.name === 'chat' && (!!r.arg || !PL.sync.user));
+    fab.hidden = hidden || r.name === 'einstellungen' || r.name === 'neu' || (r.name === 'chat' && (!!r.arg || !PL.sync.user));
   }
 
   function render() {
@@ -72,6 +77,7 @@
       case 'aufgaben': html = PL.views.tasks(); break;
       case 'lernzettel': html = PL.views.notes(); break;
       case 'chat': html = PL.views.chat(r.arg); break;
+      case 'neu': html = PL.views.feed(); break;
       case 'einstellungen': html = PL.views.settings(); break;
       case 'setup': html = PL.views.setup(); break;
       default: html = PL.views.dashboard();

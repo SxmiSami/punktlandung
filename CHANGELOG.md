@@ -3,6 +3,15 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.8.0
+- **Neuigkeiten**: Alles Neue an einem Ort – über die Glocke auf der Übersicht, die Karte „Neuigkeiten“ oder (am PC) in der Seitenleiste. Der Zähler hängt am Reiter „Übersicht“
+- **Dateien aus Untis**: Lernzettel und Arbeitsblätter, die Lehrkräfte an Hausaufgaben oder Mitteilungen hängen, lassen sich direkt öffnen oder mit einem Tipp **als Lernzettel** im passenden Fach speichern
+- Außerdem im Feed: neue **Hausaufgaben** (mit ganzem Text, Fälligkeit und Lehrkraft), **Mitteilungen** aus Untis, **Nachrichten des Tages**, neue oder verschobene **Klausuren**, **Ausfälle, Raumänderungen, Vertretungen und EVA** der nächsten Tage und Zettel, die Freunde mit dir teilen
+- Filter: Alle, Dateien, Hausaufgaben, Mitteilungen, Klausuren & Ausfälle; „Alle gelesen“ und Aktualisieren
+- Mitteilungen werden erst beim Antippen ganz geladen – erst dann sind sie auch in Untis gelesen
+- Die Neuigkeiten liegen nur auf diesem Gerät (wie die Untis-Zugangsdaten)
+- Die Supabase-Funktion `untis` muss dafür einmal neu eingefügt werden (SYNC-EINRICHTEN.md, Schritt 7)
+
 ## 0.7.4
 - Kalender: Wochen durch **Wischen** wechseln (nach links = nächste Woche, nach rechts = vorherige), mit kurzer Schiebe-Animation
 - Am PC gehen auch die Pfeiltasten ← →

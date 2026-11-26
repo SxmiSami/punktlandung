@@ -226,6 +226,7 @@
     }
     return { blob: file, mime: type || 'application/octet-stream', name: file.name, origSize: null };
   };
+  PL.guessMime = (name) => guessMime(name);
   function guessMime(name) {
     const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1];
     const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', gif: 'image/gif', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv',
