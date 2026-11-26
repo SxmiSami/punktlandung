@@ -221,6 +221,7 @@
     const today = PL.today();
     if (PL.untis && !edit) PL.untis.ensureWeek(monday);
     const col = (d) => `${2 + 2 * d} / span 2`;
+    const slide = PL.ui.planSlide; PL.ui.planSlide = null;
 
     let cells = '';
     cells += `<div class="tt-corner">${wt ? `<span class="ab-badge">${wt}</span>` : ''}</div>`;
@@ -268,7 +269,7 @@
       ? `<div class="tt-legend"><span class="lg off">Entfall</span><span class="lg moved">Raum-/Lehreränderung</span><span class="lg eva">EVA</span><span class="lg exam">Klausur</span><span class="lg hw">${ic('tasks', 'i-sm')} Hausaufgabe</span></div>` : '';
     const hint = edit
       ? `Tippe auf ein leeres Feld, um eine Stunde einzutragen, oder auf eine Stunde, um sie zu ändern. Doppelstunden werden automatisch zusammengefasst.${s.abWeeks ? '' : ' A/B-Wochen kannst du in den Einstellungen einschalten.'}`
-      : `Tippe auf eine Stunde für Details.${PL.untis && PL.untis.connected() ? (PL.untis.error ? ` <span style="color:var(--danger)">Untis: ${esc(PL.untis.error)}</span>` : ' Änderungen kommen live aus Untis.') : ' Mit Untis (Einstellungen) siehst du hier auch Ausfälle und Klausuren.'}`;
+      : `Tippe auf eine Stunde für Details, wische für die nächste Woche.${PL.untis && PL.untis.connected() ? (PL.untis.error ? ` <span style="color:var(--danger)">Untis: ${esc(PL.untis.error)}</span>` : ' Änderungen kommen live aus Untis.') : ' Mit Untis (Einstellungen) siehst du hier auch Ausfälle und Klausuren.'}`;
     return `<div class="page view">
       ${pageHeadPlan('Kalender', seg)}
       <div class="week-nav">
@@ -279,7 +280,7 @@
         ${st().lessons.length ? `<button class="btn btn-sm ${edit ? 'btn-primary' : ''} plan-edit-btn" data-action="plan-edit">${edit ? `${ic('check', 'i-sm')} Fertig` : `${ic('edit', 'i-sm')} Bearbeiten`}</button>` : ''}
       </div>
       ${edit && st().lessons.length ? `<div class="edit-banner">${ic('edit', 'i-sm')} Bearbeiten – Änderungen gelten jede Woche</div>` : ''}
-      <section class="card tt-card ${edit ? 'is-edit' : ''}">
+      <section class="card tt-card ${edit ? 'is-edit' : ''} ${slide ? 'slide-' + slide : ''}" data-swipe-week>
         <div class="tt" style="grid-template-rows:auto repeat(${n}, var(--tt-row))">${cells}</div>
       </section>
       ${legend}
@@ -317,6 +318,48 @@
         ${sub ? `<button type="button" class="btn btn-primary" data-action="add-task" data-subject="${sub.id}">${ic('plus', 'i-sm')} Hausaufgabe</button>` : `<button type="button" class="btn btn-primary" data-action="close-sheet">OK</button>`}
       </div>`);
   };
+
+  /* Woche wechseln: wischen (Handy/iPad) oder Pfeiltasten (PC) */
+  PL.changeWeek = function (step) {
+    PL.ui.planWeek += step;
+    PL.ui.planSlide = step > 0 ? 'next' : 'prev';
+    PL.render();
+  };
+  (function swipeWeeks() {
+    let x0 = null, y0 = 0, t0 = 0, horizontal = false;
+    document.addEventListener('touchstart', (e) => {
+      const card = e.target.closest('[data-swipe-week]');
+      if (!card || e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); horizontal = false;
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (x0 == null) return;
+      const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+      if (!horizontal && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { x0 = null; return; }  // scrollt senkrecht
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) horizontal = true;
+      const card = document.querySelector('[data-swipe-week] .tt');
+      if (horizontal && card) { card.style.transition = 'none'; card.style.transform = `translateX(${dx * 0.35}px)`; card.style.opacity = String(1 - Math.min(0.4, Math.abs(dx) / 600)); }
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      const fast = Date.now() - t0 < 700;
+      x0 = null;
+      const card = document.querySelector('[data-swipe-week] .tt');
+      const reset = () => { if (card) { card.style.transition = 'transform .18s ease, opacity .18s ease'; card.style.transform = ''; card.style.opacity = ''; } };
+      if (horizontal && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.3 && (fast || Math.abs(dx) > 120)) {
+        // nach links wischen = nächste Woche
+        PL.changeWeek(dx < 0 ? 1 : -1);
+      } else reset();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!document.querySelector('[data-swipe-week]') || !document.getElementById('sheetLayer').hidden) return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (['input', 'textarea', 'select'].includes(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); PL.changeWeek(1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); PL.changeWeek(-1); }
+    });
+  })();
 
   PL.extraActions = Object.assign(PL.extraActions || {}, {
     'lesson-info': (d) => PL.lessonInfoSheet(d.date, d.i),

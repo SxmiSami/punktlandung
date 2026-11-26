@@ -1182,3 +1182,12 @@ button.lesson-row { width: 100%; text-align: left; }
 
 .hw-compare { padding: 12px 14px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--line); margin-bottom: 10px; }
 .hw-text { font-weight: 700; margin: 4px 0; }
+
+/* Wochenwechsel mit kurzer Schiebe-Animation */
+.tt-card { overflow: hidden; }
+.tt-card .tt { will-change: transform; }
+.tt-card.slide-next .tt { animation: slideNext .22s ease; }
+.tt-card.slide-prev .tt { animation: slidePrev .22s ease; }
+@keyframes slideNext { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes slidePrev { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tt-card.slide-next .tt, .tt-card.slide-prev .tt { animation: none; } }

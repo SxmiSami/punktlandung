@@ -125,7 +125,7 @@
     'task-filter': (d) => { PL.ui.taskFilter = d.v; render(); },
     'add-lesson': (d) => PL.lessonSheet({ day: d.day != null ? d.day : Math.min(4, (new Date().getDay() + 6) % 7), period: d.period || 1 }),
     'edit-lesson': (d) => PL.lessonSheet({ ids: d.ids }),
-    'plan-week': (d) => { const v = Number(d.v); PL.ui.planWeek = v === 0 ? 0 : PL.ui.planWeek + v; render(); },
+    'plan-week': (d) => { const v = Number(d.v); if (v === 0) { PL.ui.planSlide = PL.ui.planWeek > 0 ? 'prev' : 'next'; PL.ui.planWeek = 0; render(); } else PL.changeWeek(v); },
     'plan-mode': (d) => { PL.ui.planMode = d.v; if (route().name === 'termine' && d.v === 'week') location.hash = '#/plan'; else render(); },
     'edit-periods': () => PL.periodsSheet(),
     'set-ab': (d) => {

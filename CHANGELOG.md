@@ -3,6 +3,10 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.7.4
+- Kalender: Wochen durch **Wischen** wechseln (nach links = nächste Woche, nach rechts = vorherige), mit kurzer Schiebe-Animation
+- Am PC gehen auch die Pfeiltasten ← →
+
 ## 0.7.3
 - Klausuren richtig im Kalender: Sie werden an die Klausurstunden aus Untis gehängt (meist ein anderer Raum), nicht mehr an die normale Stunde des Fachs
 - Stunden, die laut Untis an dem Tag gar nicht stattfinden (z. B. in Klausurwochen), werden ausgeblendet – selbst ergänzte Stunden bleiben
