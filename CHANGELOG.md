@@ -3,6 +3,11 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.5.2
+- Untis-Import zuverlässiger: Der feste Stundenplan wird aus sechs Wochen nach Mehrheit erkannt – Klausuren, Vertretungen und Wochen mit vielen Änderungen bringen ihn nicht mehr durcheinander (z. B. fehlte vorher eine Stunde oder wurde fälschlich als A/B-Stunde eingetragen)
+- Im Untis-Fenster steht, welche Stunden nicht übernommen wurden und warum
+- Bei zwei Fächern in derselben Stunde gewinnt das, das häufiger vorkommt
+
 ## 0.5.1
 - Untis verbinden per **QR-Code scannen**: Kamera auf den Code in WebUntis halten (Profil → Freigaben → Zugriff über Untis Mobile) – alles füllt sich aus und der Stundenplan lädt sofort
 - Geht auch mit einem Foto oder Screenshot vom QR-Code

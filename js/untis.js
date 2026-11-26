@@ -96,54 +96,76 @@
 
   /* ---------- Wochenplan aus den Untis-Stunden ableiten ---------- */
   const mondayIso = (iso) => PL.isoDate(PL.mondayOf(PL.parseDate(iso)));
+  /* Aus mehreren Wochen den festen Plan ableiten.
+     Eine Stunde zählt, wenn sie in den meisten Wochen vorkommt – so fallen
+     Klausuren, Vertretungen und einmalige Änderungen heraus, und eine Woche
+     mit vielen Änderungen bringt den Plan nicht durcheinander.
+     Kommt sie nur in geraden oder nur in ungeraden Wochen vor → A/B-Stunde. */
+  const DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
   U.buildPlan = function (lessons, periods) {
-    // Vertretungen/Raumänderungen („irregular“) bestätigen nur Stunden, legen aber keine eigenen an
     const all = lessons.filter((l) => l.type === 'ls' && l.subjects.length);
     const byWeek = {};
     all.forEach((l) => { (byWeek[mondayIso(l.date)] = byWeek[mondayIso(l.date)] || []).push(l); });
     const weeks = Object.keys(byWeek).sort().filter((w) => byWeek[w].length >= 5);
-    // zwei aufeinanderfolgende Wochen mit Unterricht (für A/B), sonst nur eine
-    let pair = null;
-    for (let i = 0; i < weeks.length - 1 && !pair; i++) {
-      if (Math.round((PL.parseDate(weeks[i + 1]) - PL.parseDate(weeks[i])) / DAY_MS) === 7) pair = [weeks[i], weeks[i + 1]];
-    }
-    const use = pair || weeks.slice(0, 1);
-    if (!use.length) return { weeks: [], entries: [], subjects: [], skipped: 0 };
-
-    const entries = {};
-    let skipped = 0;
+    if (!weeks.length) return { weeks: [], entries: [], subjects: [], dropped: [] };
+    const parity = (w) => Math.round((PL.parseDate(w) - PL.parseDate(weeks[0])) / (7 * DAY_MS)) % 2;
     const dayOf = (iso) => (PL.parseDate(iso).getDay() + 6) % 7;
-    const daysWith = use.map((w) => new Set(byWeek[w].map((l) => dayOf(l.date))));
-    use.forEach((w, wi) => byWeek[w].forEach((l) => {
+    const daysWith = {};
+    weeks.forEach((w) => { daysWith[w] = new Set(byWeek[w].map((l) => dayOf(l.date))); });
+
+    const entries = {}, dropped = [];
+    weeks.forEach((w) => byWeek[w].forEach((l) => {
       const day = dayOf(l.date);
       if (day > 4) return;
-      const r = U.periodRange(l.start, l.end, periods);
-      if (!r) { if (l.code !== 'irregular') skipped++; return; }
       const su = l.subjects[0];
+      const r = U.periodRange(l.start, l.end, periods);
+      if (!r) { dropped.push({ day, label: `${l.start}–${l.end}`, su, why: 'außerhalb der Stundenzeiten' }); return; }
       const key = [day, r.from, r.to, su.name].join('|');
-      const e = entries[key] = entries[key] || { day, from: r.from, to: r.to, su, room: '', weeks: new Set(), regular: new Set() };
+      const e = entries[key] = entries[key] || { day, from: r.from, to: r.to, su, room: '', rooms: {}, weeks: new Set(), regular: 0 };
       const room = l.origRooms[0] || l.rooms[0] || '';
-      if (room && (!e.room || l.code !== 'irregular')) e.room = room;
-      e.weeks.add(wi);
-      if (l.code !== 'irregular') e.regular.add(wi);
+      if (room) e.rooms[room] = (e.rooms[room] || 0) + (l.code === 'irregular' ? 1 : 2);
+      e.weeks.add(w);
+      if (l.code !== 'irregular') e.regular++;
     }));
+
     const list = [];
     Object.values(entries).forEach((e) => {
-      if (!e.regular.size) return;               // nur als Vertretung aufgetaucht
+      const has = [...e.weeks];
+      const hasP = [0, 1].map((p) => has.filter((w) => parity(w) === p).length);
+      // Wochen, in denen an diesem Tag überhaupt Unterricht war (Feiertage zählen nicht)
+      const possP = [0, 1].map((p) => weeks.filter((w) => parity(w) === p && daysWith[w].has(e.day)).length);
+      const label = `${e.from === e.to ? e.from + '.' : e.from + '.–' + e.to + '.'} Std.`;
       let week = null;
-      if (use.length === 2 && e.weeks.size === 1) {
-        const wi = [...e.weeks][0];
-        // fiel der Tag in der anderen Woche ganz aus (Feiertag), zählt die Stunde trotzdem jede Woche
-        if (daysWith[1 - wi].has(e.day)) week = wi;
+      if (weeks.length > 1 && !(hasP[0] && hasP[1])) {
+        const p = hasP[0] ? 0 : 1;
+        // in weniger als der Hälfte der passenden Wochen → einmalig (Klausur, Vertretung …)
+        if (hasP[p] * 2 <= possP[p] && possP[p] > 1) { dropped.push({ day: e.day, label, su: e.su, why: `nur ${hasP[p]}× in ${weeks.length} Wochen` }); return; }
+        if (!e.regular && has.length < 2) { dropped.push({ day: e.day, label, su: e.su, why: 'nur als Änderung' }); return; }
+        if (possP[1 - p]) week = p;      // in den anderen Wochen war Unterricht, aber nicht diese Stunde
+      } else if (weeks.length === 1 && !e.regular) {
+        dropped.push({ day: e.day, label, su: e.su, why: 'nur als Änderung' }); return;
       }
-      list.push({ day: e.day, from: e.from, to: e.to, su: e.su, room: e.room, week });
+      const room = Object.keys(e.rooms).sort((x, y) => e.rooms[y] - e.rooms[x])[0] || '';
+      list.push({ day: e.day, from: e.from, to: e.to, su: e.su, room, week, n: has.length });
     });
-    const subjects = {};
+
+    // Überschneidungen: zwei Fächer in derselben Stunde (gleiche Woche) → das häufigere gewinnt
+    list.sort((x, y) => y.n - x.n || (x.week == null ? -1 : 1));
+    const kept = [];
     list.forEach((e) => {
+      const clash = kept.find((k) => k.day === e.day && k.from <= e.to && e.from <= k.to && (k.week == null || e.week == null || k.week === e.week));
+      if (clash) dropped.push({ day: e.day, label: `${e.from === e.to ? e.from + '.' : e.from + '.–' + e.to + '.'} Std.`, su: e.su, why: `gleichzeitig mit ${clash.su.name}` });
+      else kept.push(e);
+    });
+
+    const subjects = {};
+    kept.forEach((e) => {
       const x = subjects[e.su.name] = subjects[e.su.name] || { name: e.su.name, long: e.su.long, count: 0 };
       x.count += (e.to - e.from + 1) * (e.week == null ? 1 : 0.5);
     });
-    return { weeks: use, entries: list, subjects: Object.values(subjects).sort((a, b) => b.count - a.count), skipped };
+    dropped.forEach((d) => { d.dayName = DAYS_SHORT[d.day]; });
+    dropped.sort((x, y) => x.day - y.day || String(x.label).localeCompare(String(y.label)));
+    return { weeks, entries: kept, subjects: Object.values(subjects).sort((a, b) => b.count - a.count), dropped };
   };
 
   /* ---------- Ausfälle & Raumänderungen ---------- */
@@ -288,7 +310,7 @@
           btn.disabled = true; btn.textContent = 'Lade aus Untis …'; msg.hidden = true;
           try {
             const monday = PL.mondayOf(new Date());
-            const data = await U.fetch(creds, PL.isoDate(monday), PL.isoDate(PL.addDays(monday, 27)));
+            const data = await U.fetch(creds, PL.isoDate(monday), PL.isoDate(PL.addDays(monday, 41)));
             reviewSheet(creds, data);
           } catch (err) {
             msg.hidden = false; msg.className = 'auth-msg'; msg.textContent = err.message;
@@ -309,7 +331,7 @@
 
     if (!plan.entries.length) {
       PL.openSheet(`${PL.sheetHead('Kein Unterricht gefunden')}
-        <p style="margin:0 0 18px;color:var(--text-2)">In den nächsten vier Wochen steht in Untis kein Unterricht für dich (z. B. Ferien). Versuch es nach den Ferien noch einmal.</p>
+        <p style="margin:0 0 18px;color:var(--text-2)">In den nächsten sechs Wochen steht in Untis kein Unterricht für dich (z. B. Ferien). Versuch es nach den Ferien noch einmal.</p>
         <div class="sheet-foot"><button type="button" class="btn btn-primary" data-action="close-sheet">OK</button></div>`);
       return;
     }
@@ -322,6 +344,9 @@
       ${PL.sortedSubjects().map((x) => `<option value="${x.id}" ${sel === x.id ? 'selected' : ''}>${esc(x.short)} · ${esc(x.name)}</option>`).join('')}`;
     const hasAB = () => plan.entries.some((e) => e.week != null);
     const countHours = () => plan.entries.filter((e) => f.choice[e.su.name] !== 'skip').reduce((n, e) => n + (e.to - e.from + 1), 0);
+    const droppedHtml = () => (plan.dropped.length ? `<details class="qr-manual" style="margin-top:10px"><summary>${plan.dropped.length} Stunde(n) nicht übernommen</summary>
+      <div class="hint" style="line-height:1.6">${plan.dropped.map((d) => `${esc(d.dayName || '')} ${esc(d.label)} · <b>${esc(d.su.name)}</b> – ${esc(d.why)}`).join('<br>')}</div>
+      <p class="hint" style="margin:8px 0 0">Fehlt eine Stunde, die du wirklich hast? Trag sie danach im Kalender von Hand ein.</p></details>` : '');
     const summary = () => {
       const n = countHours();
       return `${n} Stunden im Plan · ${plan.subjects.length} Fächer${hasAB() ? ' · A/B-Wochen erkannt' : ''}`;
@@ -336,7 +361,7 @@
       ${tg.length ? `<div class="opt-row"><div><div class="t">Stundenzeiten aus Untis</div><div class="d">${tg.length} Stunden · ${esc(tg[0].start)} bis ${esc(tg[tg.length - 1].end)}</div></div>
         <label class="switch"><input type="checkbox" data-times ${f.adoptTimes ? 'checked' : ''}><span></span></label></div>` : ''}
       ${hasAB() ? `<p class="hint" style="margin:6px 0 0">Manche Stunden gibt es nur jede zweite Woche. A/B-Wochen werden eingeschaltet, die Woche ab ${PL.fmtDate(plan.weeks[0])} zählt als ${s.abWeeks && s.abRef ? PL.weekType(PL.parseDate(plan.weeks[0])) : 'A'}-Woche.</p>` : ''}
-      ${plan.skipped ? `<p class="hint" style="margin:6px 0 0">${plan.skipped} Stunde(n) liegen außerhalb deiner Stundenzeiten und werden ausgelassen.</p>` : ''}
+      <div data-dropped>${droppedHtml()}</div>
       ${st().lessons.length ? `<p class="hint" style="margin:10px 0 0">${ic('alert', 'i-sm')} Dein bisheriger Stundenplan (${st().lessons.length} Stunden) wird ersetzt.</p>` : ''}
       <div class="sheet-foot" style="margin-top:16px"><button type="button" class="btn" data-back>Zurück</button><button type="button" class="btn btn-primary" data-apply>${ic('check', 'i-sm')} Übernehmen</button></div>`, {
       wide: true,
@@ -344,7 +369,7 @@
         const sum = sh.querySelector('[data-sum]');
         sh.querySelectorAll('[data-su]').forEach((sel) => { sel.onchange = () => { f.choice[sel.dataset.su] = sel.value; sum.textContent = summary(); }; });
         const times = sh.querySelector('[data-times]');
-        if (times) times.onchange = () => { f.adoptTimes = times.checked; plan = U.buildPlan(data.lessons, periods()); sum.textContent = summary(); };
+        if (times) times.onchange = () => { f.adoptTimes = times.checked; plan = U.buildPlan(data.lessons, periods()); sum.textContent = summary(); sh.querySelector('[data-dropped]').innerHTML = droppedHtml(); };
         sh.querySelector('[data-back]').onclick = () => U.sheet();
         sh.querySelector('[data-apply]').onclick = () => apply(creds, data, plan, f, tg);
       },
