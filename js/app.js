@@ -66,8 +66,8 @@
     renderNav(r);
     if (changed) { window.scrollTo(0, 0); lastRoute = key; }
     else { main.querySelectorAll('.view').forEach((v) => (v.style.animation = 'none')); window.scrollTo(0, y); }
-    const titles = { '': 'Übersicht', faecher: 'Fächer', fach: 'Fach', abitur: 'Abitur', termine: 'Termine', plan: 'Stundenplan', aufgaben: 'Aufgaben', lernzettel: 'Lernzettel', einstellungen: 'Einstellungen', setup: 'Einrichtung' };
-    document.title = (titles[r.name] || 'Übersicht') + ' · Punktlandung';
+    // Titel bleibt immer „Punktlandung“: Safari nimmt ihn beim „Zum Home-Bildschirm“ als App-Namen
+    document.title = 'Punktlandung';
   }
   PL.render = render;
 

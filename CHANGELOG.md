@@ -3,6 +3,10 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.3.2
+- Web-App auf dem Home-Bildschirm heißt jetzt „Punktlandung“ (statt z. B. „Übersicht · Punktlandung“)
+- App-Symbol wird beim Hinzufügen zum Home-Bildschirm richtig übernommen (kein Buchstaben-Symbol mehr)
+
 ## 0.3.1
 - Speicheranzeige kompakt: kleine Wolke mit Prozentwert oben auf der Lernzettel-Seite, Details beim Antippen
 - Alle Speicherwerte in Prozent (MB klein darunter)
