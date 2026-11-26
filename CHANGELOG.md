@@ -3,6 +3,13 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
 
+## 0.5.0
+- **Untis**: Unter Einstellungen → Stundenplan mit WebUntis verbinden – per Link aus dem QR-Code (Schlüssel, geht auch mit Schulkonto) oder mit Passwort
+- Stundenplan, Räume und Stundenzeiten werden übernommen; A/B-Wochen werden erkannt; Untis-Fächer lassen sich eigenen Fächern zuordnen oder neu anlegen
+- Ausfälle („Entfällt“) und Raumänderungen erscheinen im Kalender und in der Übersicht; „Nächste Stunde“ bei Hausaufgaben überspringt ausfallende Stunden
+- Zugangsdaten bleiben nur auf dem Gerät (nicht im Konto, nicht im Backup)
+- Einmalig die Supabase-Funktion `untis` einrichten (siehe SYNC-EINRICHTEN.md, Schritt 7)
+
 ## 0.4.3
 - Fächer in Fenstern (z. B. „Neue Hausaufgabe“, „Note eintragen“) stehen jetzt in mehreren Zeilen untereinander – alle sofort antippbar, kein seitliches Wischen mehr nötig
 

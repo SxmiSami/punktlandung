@@ -58,6 +58,22 @@ Damit ihr euch in der App schreiben könnt (einzeln oder in Gruppen):
 
 Das legt die Tabellen für Chats und Nachrichten an. Nachrichten sieht nur, wer im Chat ist. Lernzettel, die in einen Chat geschickt werden, dürfen alle im Chat öffnen. Neue Nachrichten kommen sofort an (Supabase Realtime); falls Realtime nicht geht, holt die App sie alle 20 Sekunden.
 
+## 7. Untis einrichten (optional)
+
+Damit die App deinen Stundenplan aus WebUntis holen und Ausfälle anzeigen kann, braucht Supabase einen kleinen Vermittler (eine „Edge Function“). WebUntis lässt Abfragen direkt aus dem Browser nämlich nicht zu.
+
+1. Links auf **„Edge Functions“** klicken → **„Deploy a new function“** → **„Via Editor“**.
+2. Als Namen genau **`untis`** eintragen.
+3. Den kompletten Inhalt der Datei [`supabase/functions/untis/index.ts`](supabase/functions/untis/index.ts) in den Editor einfügen (den Beispielcode vorher löschen).
+4. Auf **„Deploy function“** klicken.
+5. Danach bei der Funktion auf **„Details“** bzw. **„Settings“** gehen und **„Verify JWT with legacy secret“** (bzw. „Enforce JWT verification“) **ausschalten**, dann speichern. Sonst lässt Supabase die Anfragen der App nicht durch.
+
+Alternativ mit dem Terminal: `npx supabase functions deploy untis --no-verify-jwt --project-ref <deine-Projekt-ID>`
+
+In der App dann unter **Einstellungen → Stundenplan → Untis** auf **„Verbinden“** tippen. Am einfachsten geht das mit dem Link aus WebUntis: **Profil → Freigaben → Zugriff über Untis Mobile → Anzeigen**.
+
+> Die Untis-Zugangsdaten bleiben nur auf deinem Gerät. Die Funktion bekommt sie bei jedem Abruf mitgeschickt, gibt sie an WebUntis weiter und speichert sie nicht. Sie spricht nur mit Adressen, die auf `.webuntis.com` enden.
+
 ## Danach
 
 In der App unter **Einstellungen → Konto & Synchronisierung** ein Konto erstellen. Auf jedem weiteren Gerät einfach mit derselben E-Mail anmelden.

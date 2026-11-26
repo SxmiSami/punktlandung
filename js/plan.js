@@ -44,7 +44,7 @@
       }
     });
     blocks.forEach((b) => { b.start = PL.period(b.from).start; b.end = PL.period(b.to).end; });
-    return blocks;
+    return PL.untis ? PL.untis.annotate(date, blocks) : blocks;
   };
 
   /* Die nächsten Unterrichtstage eines Fachs (ab morgen), je Tag der erste Block */
@@ -52,7 +52,7 @@
     const out = [];
     for (let i = 1; i <= 42 && out.length < count; i++) {
       const d = PL.addDays(new Date(), i);
-      const b = PL.blocksOn(d).find((x) => x.subjectId === subjectId);
+      const b = PL.blocksOn(d).find((x) => x.subjectId === subjectId && !x.cancelled);
       if (b) out.push({ date: PL.isoDate(d), block: b });
     }
     return out;
@@ -97,13 +97,14 @@
     const wt = PL.weekType(date);
     const rows = blocks.map((b) => {
       const sub = PL.subject(b.subjectId);
-      const live = isToday && toMin(b.start) <= now && now <= toMin(b.end);
+      const live = isToday && !b.cancelled && toMin(b.start) <= now && now <= toMin(b.end);
       const past = isToday && toMin(b.end) < now;
-      return `<a class="lesson-row ${live ? 'live' : ''} ${past ? 'past' : ''}" style="--c:${sub.color}" href="#/fach/${sub.id}">
+      const room = b.newRoom ? `<b class="room-new">${esc(b.newRoom)}</b> <s>${esc(b.room)}</s>` : esc(b.room);
+      return `<a class="lesson-row ${live ? 'live' : ''} ${past ? 'past' : ''} ${b.cancelled ? 'cancelled' : ''}" style="--c:${sub.color}" href="#/fach/${sub.id}">
         <span class="lr-time num">${esc(b.start)}<small>${esc(b.end)}</small></span>
         <span class="lr-bar"></span>
-        <span class="row-main"><span class="row-title" style="display:block">${esc(sub.name)}${live ? ' <span class="tag tag-live">JETZT</span>' : ''}</span>
-          <span class="row-sub" style="display:block">${b.from === b.to ? b.from + '.' : b.from + '.–' + b.to + '.'} Std.${b.room ? ' · ' + esc(b.room) : ''}${sub.teacher ? ' · ' + esc(sub.teacher) : ''}</span></span>
+        <span class="row-main"><span class="row-title" style="display:block">${esc(sub.name)}${live ? ' <span class="tag tag-live">JETZT</span>' : ''}${b.cancelled ? ' <span class="tag tag-off">ENTFÄLLT</span>' : ''}</span>
+          <span class="row-sub" style="display:block">${b.from === b.to ? b.from + '.' : b.from + '.–' + b.to + '.'} Std.${b.room || b.newRoom ? ' · ' + room : ''}${sub.teacher ? ' · ' + esc(sub.teacher) : ''}${b.info ? ' · ' + esc(b.info) : ''}</span></span>
       </a>`;
     }).join('');
     return `<section class="card">
@@ -159,6 +160,7 @@
     const n = s.periods.length;
     const today = PL.today();
     const evs = st().events;
+    if (PL.untis) PL.untis.ensureWeek(monday);
 
     let cells = '';
     // Kopfzeile
@@ -184,9 +186,9 @@
         if (b.from > n) return;
         const sub = PL.subject(b.subjectId);
         const ev = evs.find((e) => e.date === iso && e.subjectId === b.subjectId);
-        const live = iso === today && toMin(b.start) <= nowM && nowM <= toMin(b.end);
-        cells += `<button class="tt-block ${live ? 'live' : ''}" style="--c:${sub.color};grid-column:${d + 2};grid-row:${b.from + 1} / span ${Math.min(b.to, n) - b.from + 1}" data-action="edit-lesson" data-ids="${b.ids.join(',')}">
-          <b>${esc(sub.short)}</b>${b.room ? `<span>${esc(b.room)}</span>` : ''}${b.week ? `<i class="wk">${b.week}</i>` : ''}${ev ? `<em>● ${esc(ev.type)}</em>` : ''}
+        const live = iso === today && !b.cancelled && toMin(b.start) <= nowM && nowM <= toMin(b.end);
+        cells += `<button class="tt-block ${live ? 'live' : ''} ${b.cancelled ? 'cancelled' : ''}" title="${esc(b.info || '')}" style="--c:${sub.color};grid-column:${d + 2};grid-row:${b.from + 1} / span ${Math.min(b.to, n) - b.from + 1}" data-action="edit-lesson" data-ids="${b.ids.join(',')}">
+          <b>${esc(sub.short)}</b>${b.newRoom ? `<span class="room-new">${esc(b.newRoom)}</span>` : b.room ? `<span>${esc(b.room)}</span>` : ''}${b.week ? `<i class="wk">${b.week}</i>` : ''}${b.cancelled ? '<em class="off">Entfällt</em>' : ev ? `<em>● ${esc(ev.type)}</em>` : ''}
         </button>`;
       });
     }
@@ -203,7 +205,7 @@
       <section class="card tt-card">
         <div class="tt" style="grid-template-rows:auto repeat(${n}, var(--tt-row))">${cells}</div>
       </section>
-      <p class="hint" style="margin:12px 4px 0">Tippe auf ein leeres Feld, um eine Stunde einzutragen. Doppelstunden werden automatisch zusammengefasst.${s.abWeeks ? '' : ' A/B-Wochen kannst du in den Einstellungen einschalten.'}</p>
+      <p class="hint" style="margin:12px 4px 0">Tippe auf ein leeres Feld, um eine Stunde einzutragen. Doppelstunden werden automatisch zusammengefasst.${s.abWeeks ? '' : ' A/B-Wochen kannst du in den Einstellungen einschalten.'}${PL.untis && PL.untis.connected() ? (PL.untis.error ? ` <span style="color:var(--danger)">Untis: ${esc(PL.untis.error)}</span>` : ' Ausfälle und Raumänderungen kommen aus Untis.') : ' Mit Untis (Einstellungen) geht es auch automatisch.'}</p>
     </div>`;
   };
   function pageHeadPlan(title, seg) {

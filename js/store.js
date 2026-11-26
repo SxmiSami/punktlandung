@@ -24,6 +24,7 @@
     abRef: null,            // Montag (ISO) einer A-Woche
     noteMode: 'both',       // Lernzettel: both | cloud | local
     compressPhotos: true,   // Fotos beim Hochladen verkleinern
+    untisMap: {},           // Untis-Fach (Kürzel) → Fach-ID oder 'skip'
   });
 
   PL.emptyState = () => ({

@@ -531,6 +531,7 @@
           ${s.abWeeks ? `<div class="opt-row"><div><div class="t">Diese Woche ist eine …</div><div class="d">KW ${PL.isoWeek(new Date())}</div></div>
             <div class="seg"><button class="${PL.weekType(new Date()) === 'A' ? 'on' : ''}" data-action="set-ab" data-v="A">A-Woche</button><button class="${PL.weekType(new Date()) === 'B' ? 'on' : ''}" data-action="set-ab" data-v="B">B-Woche</button></div></div>` : ''}
           <div class="opt-row"><div><div class="t">Stundenzeiten</div><div class="d">${s.periods.length} Stunden · ${esc(s.periods[0].start)} bis ${esc(s.periods[s.periods.length - 1].end)}</div></div><button class="btn btn-sm" data-action="edit-periods">${ic('edit', 'i-sm')} Bearbeiten</button></div>
+          ${PL.untis ? PL.untis.settingsRow() : ''}
         </section>
 
         ${accountCard()}

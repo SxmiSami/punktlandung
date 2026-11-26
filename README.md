@@ -6,6 +6,7 @@ Eine Noten-App fürs Abitur, die am PC und auf dem Handy läuft (als installierb
 - **Fächer:** Klausuren und sonstige Mitarbeit pro Halbjahr (Q1.1–Q2.2), Zeugnisnoten überschreiben die Rechnung
 - **Abitur:** Block I (Halbjahre, LK doppelt) und Block II (Prüfungen schriftlich/mündlich), Zulassungs-Check und Ziel-Rechner
 - **Kalender:** Stundenplan mit Doppelstunden und A/B-Wochen, dazu Klausuren und Tests mit Countdown
+- **Untis:** Stundenplan aus WebUntis übernehmen, Ausfälle und Raumänderungen live sehen
 - **Aufgaben:** Hausaufgaben mit Fälligkeit (z. B. „bis zur nächsten Stunde“) zum Abhaken
 - **Lernzettel:** Fotos und PDFs pro Fach – in der Cloud, nur auf dem Gerät oder beides, mit Speicheranzeige und Teilen mit Freunden
 - **Chat:** Einzel- und Gruppenchats mit Freunden, die ein Konto haben – Nachrichten kommen live an, Lernzettel und Klausurtermine lassen sich direkt in den Chat schicken

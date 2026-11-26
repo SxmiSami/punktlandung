@@ -795,6 +795,13 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
 .lesson-row.past { opacity: .45; }
 .lesson-row.live { background: color-mix(in srgb, var(--c) 14%, transparent); }
 .tag-live { background: var(--t1); color: var(--tier-ink); }
+.tag-off { background: var(--danger); color: #fff; }
+.lesson-row.cancelled .row-title { text-decoration: line-through; text-decoration-color: var(--danger); }
+.lesson-row.cancelled .lr-bar { background: repeating-linear-gradient(180deg, var(--c) 0 4px, transparent 4px 8px); }
+.lesson-row .room-new, .tt-block .room-new { color: var(--t4); font-weight: 800; }
+.tt-block.cancelled { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, var(--card)) 0 6px, var(--card) 6px 12px); border-left-style: dashed; }
+.tt-block.cancelled b { text-decoration: line-through; text-decoration-color: var(--danger); opacity: .7; }
+.tt-block em.off { color: var(--danger); }
 
 /* ---------- Hausaufgaben ---------- */
 .tasks { display: flex; flex-direction: column; gap: 2px; }
