@@ -511,6 +511,8 @@
 
         ${accountCard()}
 
+        ${PL.admin ? PL.admin.card() : ''}
+
         ${PL.notesStorageRow()}
 
         <section class="card">

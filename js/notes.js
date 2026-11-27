@@ -584,6 +584,7 @@
         <button type="button" class="btn" data-open>${ic('eye', 'i-sm')} Öffnen</button>
         <button type="button" class="btn" data-dl>${ic('download', 'i-sm')} Sichern</button>
       </div>
+      ${item.isPublic && s.id && PL.admin && PL.admin.is() ? `<div class="opt-row"><div><div class="t">${ic('lock', 'i-sm')} Admin</div><div class="d">Für niemanden mehr unter „Für alle“ zeigen</div></div><button type="button" class="btn btn-sm btn-danger" data-admin-del>${ic('trash', 'i-sm')} Für alle löschen</button></div>` : ''}
       ${item.gone ? `<div class="note-warn">${ic('info', 'i-sm')}<div>Diese Datei wird nicht mehr geteilt. Du hast noch die Kopie auf diesem Gerät.</div></div>` : ''}
       <div class="opt-row"><div><div class="t">${ic('device', 'i-sm')} Auf diesem Gerät speichern</div><div class="d">Auch offline verfügbar · zählt nicht zu deinem Cloud-Speicher</div></div>
         <label class="switch"><input type="checkbox" data-here ${item.here ? 'checked' : ''} ${item.gone ? 'disabled' : ''}><span></span></label></div>
@@ -604,7 +605,9 @@
           try { await F.setSharedLocal(item, on); PL.toast(on ? 'Auf diesem Gerät gespeichert' : 'Von diesem Gerät entfernt'); PL.sharedSheet(key); }
           catch (err) { e.target.checked = !on; e.target.disabled = false; const m = sh.querySelector('[data-msg]'); m.hidden = false; m.textContent = F.err(err); }
         };
-        sh.querySelector('[data-leave]').onclick = () => PL.confirmSheet('Aus deiner Liste entfernen?', `„${s.title}“ verschwindet aus „Von anderen“${item.here ? ' und von diesem Gerät' : ''}. Bei der Person, die sie geteilt hat, bleibt sie erhalten.`, 'Entfernen', async () => {
+        const adminDel = sh.querySelector('[data-admin-del]');
+        if (adminDel) adminDel.onclick = () => PL.admin.confirmRemove(s);
+        sh.querySelector('[data-leave]').onclick =() => PL.confirmSheet('Aus deiner Liste entfernen?', `„${s.title}“ verschwindet aus „Von anderen“${item.here ? ' und von diesem Gerät' : ''}. Bei der Person, die sie geteilt hat, bleibt sie erhalten.`, 'Entfernen', async () => {
           try { await F.leaveShared(item); PL.toast('Entfernt'); } catch (err) { PL.toast(F.err(err)); }
         });
       },
