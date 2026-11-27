@@ -33,6 +33,7 @@
     if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
+    document.body.classList.toggle('no-tabbar', hidden);
     // Neuigkeiten haben unten keinen eigenen Reiter: ihr Zähler hängt an „Übersicht“
     const badge = (n) => { const v = n.id === 'aufgaben' ? openTasks : n.id === 'chat' ? unread : n.id === '' ? news : 0; return v ? `<i class="tab-badge">${v > 99 ? '99+' : v}</i>` : ''; };
     const tabActive = active === 'neu' ? '' : active;

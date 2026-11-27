@@ -3,6 +3,17 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen – und in `js/data.js` bei `PL.CHANGELOG` einen kurzen Eintrag für „Was ist neu“ ergänzen.
 
+## 0.15.0
+- **Neuer Look** nach Vorbildern aus echten Apps (Apple Card, Pocket Casts, Revolut):
+  - Farben: Orange statt Lila als Akzent, neutrales Grau als Hintergrund (dunkel: fast Schwarz), keine Verläufe mehr
+  - Schrift: Geist statt Manrope und Bricolage Grotesque, Überschriften sehr fett
+  - Karten flach ohne Schatten, Knöpfe als Pillen, Hauptknopf schwarz (dunkel: weiß), Umschalter als Pillen mit schwarzer Auswahl
+  - Abiturschnitt als normale Karte mit großer Zahl und orangem Ring statt Lila-Verlauf
+  - Chat: eigene Nachrichten und Senden-Knopf schwarz bzw. weiß
+- **Tab-Leiste** (mobil): schwebt als Pille über der Seite, der Plus-Knopf sitzt rund daneben. Bei mehr als fünf Reitern nur Icons
+- **Onboarding**: großer Titel links, grauer Untertitel, breite Knöpfe unten; in der Einrichtung Zurück-Pfeil oben statt „Zurück“/„Abbrechen“ unten
+- **App-Icon**: schwarz mit weißer Punkt-Flugbahn und orangem Landepunkt (auf dem Home-Bildschirm erst nach erneutem Hinzufügen)
+
 ## 0.14.0
 - **GIFs im Chat**: Neben dem Eingabefeld gibt es einen „GIF“-Knopf. Dort GIFs suchen (mit Schnellwörtern wie „Danke“, „Haha“, „Prüfung“) oder die beliebtesten ansehen und mit einem Tipp senden
   - Braucht einen kostenlosen GIPHY-Schlüssel in `js/config.js` (`giphyKey`, siehe SYNC-EINRICHTEN.md → „GIFs im Chat“). In Supabase muss nichts geändert werden

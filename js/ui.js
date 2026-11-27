@@ -32,7 +32,7 @@
     const t = pref === 'auto' ? (mq.matches ? 'light' : 'dark') : pref;
     document.documentElement.dataset.theme = t;
     const meta = document.querySelectorAll('meta[name="theme-color"]');
-    meta.forEach((m) => m.setAttribute('content', t === 'light' ? '#F3F4F8' : '#0B0C12'));
+    meta.forEach((m) => m.setAttribute('content', t === 'light' ? '#F2F2F5' : '#0B0B0C'));
   };
   mq.addEventListener && mq.addEventListener('change', PL.applyTheme);
 
@@ -203,7 +203,7 @@
     const r = 46, c = 2 * Math.PI * r;
     const off = c * (1 - Math.max(0, Math.min(1, frac || 0)));
     return `<svg viewBox="0 0 112 112" aria-hidden="true">
-      <defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C6F36B"/><stop offset="1" stop-color="#A89BFF"/></linearGradient></defs>
+      
       <circle class="ring-bg" cx="56" cy="56" r="${r}" fill="none" stroke-width="10"/>
       <circle class="ring-fg" cx="56" cy="56" r="${r}" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
     </svg>`;

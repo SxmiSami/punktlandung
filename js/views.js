@@ -15,7 +15,7 @@
     { id: 'abitur', label: 'Abitur', icon: 'cap' },
   ];
 
-  const semPill = () => `<button class="hero-pill sem-switch" data-action="cycle-sem" title="Halbjahr wechseln" style="background:var(--accent-soft);color:var(--accent-2)">${esc(PL.semName(st().settings.currentSem))} ${ic('chevron-down', 'i-sm')}</button>`;
+  const semPill = () => `<button class="hero-pill sem-switch" data-action="cycle-sem" title="Halbjahr wechseln" style="background:var(--card);color:var(--text)">${esc(PL.semName(st().settings.currentSem))} ${ic('chevron-down', 'i-sm')}</button>`;
 
   function pageHead(eyebrow, title, actions = '') {
     return `<header class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1></div><div class="head-actions">${actions}</div></header>`;
@@ -25,23 +25,32 @@
   /* ================= Willkommen ================= */
   PL.views = {};
   PL.views.welcome = () => `
-    <div class="welcome view"><div class="welcome-inner">
-      <div class="welcome-logo" aria-hidden="true"></div>
-      <h1>Dein Abi.<br><span>Auf den Punkt.</span></h1>
-      <p>Trag deine Noten ein, behalte Q1 und Q2 im Blick und sieh live, auf welchen Abischnitt du zusteuerst.</p>
-      <div class="welcome-actions">
-        <button class="btn btn-primary" data-action="setup">${ic('sparkle')} Fächer einrichten</button>
-        <button class="btn" data-action="import">${ic('upload', 'i-sm')} Datei importieren</button>
-        <button class="btn" data-action="demo">Mit Beispieldaten ausprobieren</button>
-        ${PL.sync.enabled && !PL.sync.user ? `<button class="btn btn-ghost" data-action="login">Schon ein Konto? <b style="color:var(--accent-2)">Anmelden</b></button>` : ''}
+    <div class="onb view">
+      <div class="onb-brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Punkt<span>landung</span></span></div>
+      <h1 class="onb-title">Dein Abi.<br>Auf den Punkt.</h1>
+      <p class="onb-sub">Trag deine Noten ein, behalte Q1 und Q2 im Blick und sieh live, auf welchen Abischnitt du zusteuerst.</p>
+      <div class="onb-art" aria-hidden="true">
+        <div class="onb-card onb-card-back">
+          <span class="subj-code" style="--c:#2F6BFF">M</span>
+          <div><b>Mathe</b><small>Klausur · Q1.1</small></div>
+          <span class="gb" data-tier="1">13</span>
+        </div>
+        <div class="onb-card onb-card-front">
+          <small>Abiturschnitt</small>
+          <b>1,8</b>
+          <span class="bar"><i style="width:72%"></i></span>
+        </div>
       </div>
-      <div class="feature-list">
-        <div>${ic('trend')}Live-Abischnitt</div>
-        <div>${ic('layers')}Q1.1 bis Q2.2</div>
-        <div>${ic('target')}Ziel-Rechner</div>
+      <div class="onb-actions">
+        <button class="btn btn-primary btn-lg" data-action="setup">Fächer einrichten</button>
+        <button class="btn btn-lg" data-action="demo">Mit Beispieldaten ausprobieren</button>
+        <div class="onb-links">
+          <button class="onb-link" data-action="import">Datei importieren</button>
+          ${PL.sync.enabled && !PL.sync.user ? `<button class="onb-link" data-action="login">Schon ein Konto? Anmelden</button>` : ''}
+        </div>
+        <div class="hint onb-version">Version ${PL.VERSION}</div>
       </div>
-      <div class="hint" style="margin-top:22px">Version ${PL.VERSION}</div>
-    </div></div>`;
+    </div>`;
 
   /* ================= Einrichtung ================= */
   PL.startSetup = function () {
@@ -58,11 +67,18 @@
     if (!S) { PL.startSetup(); return ''; }
     const picked = S.list.filter((s) => s.picked);
     const steps = `<div class="steps">${[1, 2, 3].map((n) => `<i class="${n <= S.step ? 'on' : ''}"></i>`).join('')}</div>`;
+    // Kopf wie im Onboarding: Zurück-Pfeil, großer Titel, grauer Untertitel
+    const backAttr = S.step > 1 ? 'data-action="setup-back"' : st().subjects.length ? 'data-action="setup-cancel"' : '';
+    const head = (title, sub) => `<div class="onb-head">
+        ${backAttr ? `<button class="onb-back" ${backAttr} aria-label="${S.step > 1 ? 'Zurück' : 'Abbrechen'}">${ic('chevron-left')}</button>` : `<a class="onb-back" href="#/" aria-label="Zurück">${ic('chevron-left')}</a>`}
+        ${steps}
+        <h1 class="onb-title">${title}</h1>
+        <p class="onb-sub">${sub}</p>
+      </div>`;
     let body = '', info = '', next = '';
     if (S.step === 1) {
       body = `
-        ${pageHead('Schritt 1 von 3', 'Welche Fächer hast du?')}
-        ${steps}
+        ${head('Welche Fächer hast du?', 'Tipp alle Fächer an, die du in der Oberstufe belegst. Eigene Fächer kannst du unten hinzufügen.')}
         <div class="pick-grid">${S.list.map((s, i) => `
           <button class="pick ${s.picked ? 'on' : ''}" style="--c:${s.color}" data-action="setup-toggle" data-i="${i}">
             <span class="subj-code" style="--c:${s.color}">${esc(s.short)}</span><span class="nm">${esc(s.name)}</span>
@@ -71,13 +87,11 @@
           <button class="pick" data-action="setup-custom" style="--c:var(--accent)"><span class="subj-code" style="--c:var(--card-3);color:var(--text)">${ic('plus', 'i-sm')}</span><span class="nm">Eigenes Fach</span></button>
         </div>`;
       info = `${picked.length} Fächer gewählt`;
-      next = `<button class="btn btn-primary" data-action="setup-next" ${picked.length ? '' : 'disabled'}>Weiter ${ic('chevron-right', 'i-sm')}</button>`;
+      next = `<button class="btn btn-primary btn-lg" data-action="setup-next" ${picked.length ? '' : 'disabled'}>Weiter</button>`;
     } else if (S.step === 2) {
       const lks = picked.filter((s) => s.lk).length;
       body = `
-        ${pageHead('Schritt 2 von 3', 'Deine Leistungskurse')}
-        ${steps}
-        <p class="muted" style="margin:-6px 0 16px">Leistungskurse zählen in Block I doppelt. Meist wählst du zwei.</p>
+        ${head('Deine Leistungskurse', 'Leistungskurse zählen in Block I doppelt. Meist wählst du zwei.')}
         <div class="pick-grid">${picked.map((s) => `
           <button class="pick ${s.lk ? 'on' : ''}" style="--c:${s.color}" data-action="setup-lk" data-id="${s.id}">
             <span class="subj-code" style="--c:${s.color}">${esc(s.short)}</span><span class="nm">${esc(s.name)}</span>
@@ -85,13 +99,12 @@
           </button>`).join('')}
         </div>`;
       info = `${lks} Leistungskurs${lks === 1 ? '' : 'e'}`;
-      next = `<button class="btn" data-action="setup-back">Zurück</button><button class="btn btn-primary" data-action="setup-next">Weiter ${ic('chevron-right', 'i-sm')}</button>`;
+      next = `<button class="btn btn-primary btn-lg" data-action="setup-next">Weiter</button>`;
     } else {
       const opts = (sel) => `<option value="">– wählen –</option>` + picked.map((s) => `<option value="${s.id}" ${s.id === sel ? 'selected' : ''}>${esc(s.short)} · ${esc(s.name)}${s.lk ? ' (LK)' : ''}</option>`).join('');
       body = `
-        ${pageHead('Schritt 3 von 3', 'Deine Abiturfächer')}
-        ${steps}
-        <div class="card" style="max-width:620px">
+        ${head('Deine Abiturfächer', 'P1 und P2 sind meist deine Leistungskurse. Du kannst das später jederzeit ändern.')}
+        <div class="card">
           <div class="field-label" style="margin-bottom:8px">Anzahl Prüfungen</div>
           <div class="seg seg-block" style="margin-bottom:12px">
             <button class="${S.examCount === 4 ? 'on' : ''}" data-action="setup-examcount" data-v="4">4 Prüfungen (×5)</button>
@@ -100,13 +113,11 @@
           ${Array.from({ length: S.examCount }, (_, i) => `
             <div class="assign-row"><span class="slot">P${i + 1}</span>
               <select class="select" data-setup-exam="${i}">${opts(S.exams[i])}</select></div>`).join('')}
-          <p class="hint" style="margin:10px 0 0">P1 und P2 sind meist deine Leistungskurse. Du kannst das später jederzeit ändern.</p>
         </div>`;
       info = '';
-      next = `<button class="btn" data-action="setup-back">Zurück</button><button class="btn btn-primary" data-action="setup-finish">${ic('check', 'i-sm')} Fertig</button>`;
+      next = `<button class="btn btn-primary btn-lg" data-action="setup-finish">Fertig</button>`;
     }
-    const cancel = st().subjects.length ? `<button class="btn btn-ghost" data-action="setup-cancel">Abbrechen</button>` : '';
-    return `<div class="page view">${body}<div class="setup-bar"><span class="info">${info}</span>${cancel}${next}</div></div>`;
+    return `<div class="page view onb-page">${body}<div class="setup-bar">${info ? `<span class="info">${info}</span>` : ''}${next}</div></div>`;
   };
 
   /* ================= Übersicht ================= */
@@ -126,7 +137,7 @@
         <div class="hero-body">
           <div>
             <div class="hero-grade num">${note != null ? PL.fmt(note, 1) : '–'}</div>
-            <div class="hero-meta"><b class="num">${T.points != null ? T.points : 0}</b> von 900 Punkten${T.points != null && !T.passed ? ' · <b style="color:#FCA5A5">noch nicht bestanden</b>' : ''}</div>
+            <div class="hero-meta"><b class="num">${T.points != null ? T.points : 0}</b> von 900 Punkten${T.points != null && !T.passed ? ' · <b style="color:var(--danger)">noch nicht bestanden</b>' : ''}</div>
           </div>
           <div class="hero-ring">${PL.ring(frac)}<div class="ring-label"><div><b class="num">${Math.round(frac * 100)}%</b>erreicht</div></div></div>
         </div>
@@ -134,7 +145,7 @@
           <div class="hero-block"><div class="lbl">Block I · Halbjahre</div><div class="val num">${b1.points != null ? b1.points : '–'} <small>/ 600</small></div><div class="bar"><i style="width:${(b1.points || 0) / 6}%"></i></div></div>
           <div class="hero-block"><div class="lbl">Block II · Prüfungen</div><div class="val num">${b2.points != null ? b2.points : '–'} <small>/ ${b2.max}</small></div><div class="bar"><i style="width:${(b2.points || 0) / b2.max * 100}%"></i></div></div>
         </div>
-        ${opts.link ? `<a class="hero-note" href="#/abitur" style="color:rgba(255,255,255,.8)">${ic('info', 'i-sm')} ${T.hasProg ? 'Fehlende Noten werden aus deinem bisherigen Schnitt hochgerechnet' : 'Details zur Berechnung'} ${ic('chevron-right', 'i-sm')}</a>` : ''}
+        ${opts.link ? `<a class="hero-note" href="#/abitur">${ic('info', 'i-sm')} ${T.hasProg ? 'Fehlende Noten werden aus deinem bisherigen Schnitt hochgerechnet' : 'Details zur Berechnung'} ${ic('chevron-right', 'i-sm')}</a>` : ''}
       </section>`;
   }
 
@@ -152,7 +163,7 @@
       const a = PL.overallAvg(i);
       return `<button class="row row-click" data-action="set-sem" data-sem="${i}" style="padding:9px 8px">
         <span class="row-main" style="font-weight:700">${esc(PL.semName(i))} ${i === s.currentSem ? '<span class="tag tag-lk" style="margin-left:6px">AKTUELL</span>' : ''}</span>
-        <span style="flex:2;max-width:140px"><span class="bar" style="background:var(--card-3);margin:0"><i style="width:${a != null ? a / 15 * 100 : 0}%"></i></span></span>
+        <span style="flex:1;max-width:120px"><span class="bar" style="background:var(--card-2);margin:0"><i style="width:${a != null ? a / 15 * 100 : 0}%"></i></span></span>
         ${PL.badge(a, { dec: 1 })}
       </button>`;
     }).join('');

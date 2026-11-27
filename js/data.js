@@ -2,11 +2,16 @@
 window.PL = window.PL || {};
 
 /* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
-PL.VERSION = '0.14.0';
+PL.VERSION = '0.15.0';
 
 /* „Was ist neu“ – erscheint nach einem Update einmal pro Konto (neueste Version zuerst).
    Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional */
 PL.CHANGELOG = [
+  { v: '0.15.0', items: [
+    { icon: 'sparkle', title: 'Neuer Look', text: 'Ruhigere Farben mit Orange als Akzent, eine neue Schrift und flache Karten – hell wie dunkel.' },
+    { icon: 'home', title: 'Neue Leiste unten', text: 'Die Navigation schwebt jetzt als Leiste über der Seite, der Plus-Knopf sitzt rechts daneben.' },
+    { icon: 'cap', title: 'Neues App-Icon', text: 'Damit es auf dem Home-Bildschirm erscheint, die App einmal neu zum Home-Bildschirm hinzufügen.' },
+  ] },
   { v: '0.14.0', items: [
     { icon: 'chat', title: 'GIFs im Chat', text: 'Tippe neben dem Eingabefeld auf „GIF“, such dir eins aus und schick es direkt los.' },
     { icon: 'sparkle', title: 'Was ist neu', text: 'Nach einem Update siehst du einmal kurz, was sich geändert hat. Unter Einstellungen kannst du es jederzeit wieder aufrufen.' },
