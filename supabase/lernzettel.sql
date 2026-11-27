@@ -3,8 +3,14 @@
 -- Kann gefahrlos mehrmals ausgeführt werden.
 --
 -- Grenzen (kostenloser Supabase-Plan: 1 GB Speicher für alle zusammen):
---   250 MB pro Person  (4 Personen × 250 MB = 1 GB)
+--   65 MB pro Person   (ausgelegt auf 10 Personen)
 --   25 MB pro Datei
+--   900 MB für alle zusammen (Puffer zum 1 GB des kostenlosen Plans)
+--   max. 10 Konten mit Cloud-Zugriff (schaltet der Admin, siehe supabase/admin.sql)
+-- Geprüft wird vor dem Hochladen, eine Datei kann also noch drüber gehen:
+-- 10 × (65 + 25) MB = 900 MB. Deshalb werden auch Uploads abgelehnt,
+-- sobald alle zusammen 875 MB (900 − 25) belegt haben – so bleibt das 1 GB
+-- auch mit mehr Konten sicher.
 -- Wenn du die Grenzen änderst, auch in js/config.js anpassen.
 
 -- 1) Speicher-Bucket (privat – nur über die Regeln unten erreichbar)
@@ -101,17 +107,45 @@ create policy "Eigene Freigaben ändern" on public.note_shares
 create policy "Freigaben entfernen" on public.note_shares
   for delete using (auth.uid() = owner or auth.uid() = recipient);
 
+-- 3b) Cloud-Zugriff: nur freigeschaltete Konten dürfen Dateien hochladen (max. 10).
+--     Anmelden können sich beliebig viele – ohne Freischaltung bleiben Dateien nur auf dem Gerät.
+do $$
+begin
+  if to_regclass('public.cloud_access') is null then
+    create table public.cloud_access (
+      user_id     uuid primary key references auth.users (id) on delete cascade,
+      granted_at  timestamptz not null default now()
+    );
+    -- Nur beim ersten Mal: die 10 ältesten Konten freischalten, damit niemand plötzlich ausgesperrt ist
+    insert into public.cloud_access (user_id)
+      select u.id from auth.users u order by u.created_at limit 10;
+  end if;
+end $$;
+-- Keine Regeln = kein direkter Zugriff; nur über die Funktionen (hier und in admin.sql)
+alter table public.cloud_access enable row level security;
+
+create or replace function public.pl_has_cloud()
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.cloud_access a where a.user_id = auth.uid());
+$$;
+revoke all on function public.pl_has_cloud() from public, anon;
+grant execute on function public.pl_has_cloud() to authenticated;
+
 -- 4) Regeln für die Dateien
 drop policy if exists "Lernzettel hochladen" on storage.objects;
 drop policy if exists "Lernzettel lesen" on storage.objects;
 drop policy if exists "Lernzettel löschen" on storage.objects;
 
--- Nur in den eigenen Ordner und nur, solange die 250 MB nicht voll sind
+-- Nur mit Cloud-Zugriff, nur in den eigenen Ordner und nur, solange die 65 MB (eigene) und 875 MB (alle) nicht voll sind
 create policy "Lernzettel hochladen" on storage.objects
   for insert to authenticated with check (
     bucket_id = 'lernzettel'
     and (storage.foldername(name))[1] = auth.uid()::text
-    and public.pl_storage_used(auth.uid()) < 250 * 1024 * 1024
+    and public.pl_has_cloud()
+    and public.pl_storage_used(auth.uid()) < 65 * 1024 * 1024
+    and public.pl_storage_total() < 875 * 1024 * 1024
   );
 
 -- Eigene Dateien und Dateien, die mit einem geteilt wurden

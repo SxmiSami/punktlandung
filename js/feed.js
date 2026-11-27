@@ -351,7 +351,7 @@
           const s = st().settings;
           const before = new Set(st().notes.map((n) => n.id));
           const r = await PL.files.add([new File([blob], a.name, { type: blob.type })], {
-            mode: PL.files.canCloud() ? (s.noteMode || 'both') : 'local', subjectId: subjectId || null,
+            mode: PL.files.canUpload() ? (s.noteMode || 'both') : 'local', subjectId: subjectId || null,
             compress: s.compressPhotos !== false, title: baseName(a.name),
           });
           const note = st().notes.find((n) => !before.has(n.id));

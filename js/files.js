@@ -5,13 +5,13 @@
    Die Einträge (Titel, Fach, Klausur, wo gespeichert) liegen in PL.state.notes und werden normal synchronisiert. */
 (function () {
   const MB = 1024 * 1024;
-  const cfg = Object.assign({ bucket: 'lernzettel', quotaMB: 250, totalMB: 1024, maxFileMB: 25 }, (window.PL_CONFIG || {}).notes || {});
+  const cfg = Object.assign({ bucket: 'lernzettel', quotaMB: 65, totalMB: 900, maxFileMB: 25, maxCloudUsers: 10 }, (window.PL_CONFIG || {}).notes || {});
   const st = () => PL.state;
 
   const F = PL.files = {
     cfg,
     quota: cfg.quotaMB * MB,      // pro Person
-    total: cfg.totalMB * MB,      // alle zusammen (kostenloser Plan)
+    total: cfg.totalMB * MB,      // alle zusammen (mit Puffer zum 1 GB des kostenlosen Plans)
     maxFile: cfg.maxFileMB * MB,  // pro Datei in der Cloud
     local: new Map(),             // Schlüssel -> Metadaten der Dateien auf diesem Gerät
     ready: false,
@@ -247,7 +247,7 @@
     if (e && e.code === 'quota') return m;
     if (setupMissing(m)) return 'Der Online-Speicher für Dateien ist noch nicht eingerichtet (supabase/lernzettel.sql in Supabase ausführen).';
     if (/maximum allowed size|payload too large|too large|413/i.test(m)) return `Die Datei ist zu groß für die Cloud (max. ${cfg.maxFileMB} MB).`;
-    if (/row-level security|violates|unauthorized|403/i.test(m)) return `Hochladen nicht erlaubt – vermutlich sind deine ${cfg.quotaMB} MB voll.`;
+    if (/row-level security|violates|unauthorized|403/i.test(m)) return (F.access === false ? 'Für dein Konto ist der Cloud-Speicher ausgeschaltet.' : `Hochladen nicht erlaubt – vermutlich sind deine ${cfg.quotaMB} MB oder der gemeinsame Speicher voll.`);
     if (/failed to fetch|network|load failed/i.test(m) || !navigator.onLine) return 'Keine Verbindung. Bist du online?';
     if (/quota|QuotaExceeded/i.test(m)) return 'Der Speicher auf diesem Gerät ist voll.';
     return m || 'Unbekannter Fehler.';
@@ -257,6 +257,9 @@
   /* ---------- Cloud ---------- */
   const bucket = () => PL.sync.client.storage.from(cfg.bucket);
   F.canCloud = () => !!(PL.sync && PL.sync.enabled && PL.sync.user);
+  // Hochladen nur mit Cloud-Zugriff (schaltet der Admin frei). null = noch unbekannt oder alte Datenbank → erlauben
+  F.access = null;
+  F.canUpload = () => F.canCloud() && F.access !== false;
   const pathOf = (note) => `${userId()}/${note.id}`;
 
   /* Belegt laut Einträgen (eigene Zettel in der Cloud) */
@@ -267,8 +270,10 @@
 
   async function upload(note, blob) {
     if (!F.canCloud()) throw new Error('Melde dich an, um Dateien online zu speichern.');
+    if (!F.canUpload()) throw quotaError('Für dein Konto ist der Cloud-Speicher ausgeschaltet. Speichere den Zettel nur auf dem Gerät.');
     if (blob.size > F.maxFile) throw quotaError(`Die Datei ist zu groß für die Cloud (${PL.fmtBytes(blob.size)}, max. ${cfg.maxFileMB} MB).`);
     if (F.usedMine() + blob.size > F.quota) throw quotaError(`Kein Platz mehr in der Cloud: noch ${PL.fmtBytes(F.freeMine())} von ${cfg.quotaMB} MB frei.`);
+    if (F.usage.total != null && F.usage.total + blob.size > F.total) throw quotaError(`Der gemeinsame Cloud-Speicher ist voll (${PL.fmtBytes(F.usage.total)} von ${PL.fmtBytes(F.total)}). Speichere den Zettel nur auf dem Gerät.`);
     const { error } = await bucket().upload(pathOf(note), blob, { contentType: note.mime || blob.type || 'application/octet-stream', upsert: false, cacheControl: '3600' });
     if (error && !/already exists|duplicate/i.test(error.message || '')) throw error;
     note.cloud = true;
@@ -302,8 +307,8 @@
   /* mode: both | cloud | local */
   F.add = async function (files, opts, onProgress) {
     const results = { ok: 0, warnings: [] };
-    const wantCloud = opts.mode !== 'local' && F.canCloud();
-    const wantLocal = opts.mode !== 'cloud' || !F.canCloud();
+    const wantCloud = opts.mode !== 'local' && F.canUpload();
+    const wantLocal = opts.mode !== 'cloud' || !F.canUpload();
     let i = 0;
     for (const file of files) {
       i++;
@@ -621,6 +626,9 @@
         if (err) { F.remoteError = setupMissing(err.message || '') ? 'setup' : 'error'; return; }
         F.remoteError = null;
         F.usage = { mine: Number(mine.data) || 0, total: Number(total.data) || 0 };
+        // Cloud-Zugriff: eigene Abfrage, damit es ohne die neue Funktion weiter funktioniert
+        const acc = await c.rpc('pl_has_cloud');
+        F.access = acc.error ? null : acc.data !== false;
         const rows = shares.data || [];
         F.shared = rows.filter((s) => s.recipient === uid);
         F.myShares = rows.filter((s) => s.owner === uid);
@@ -643,7 +651,7 @@
     return remoteBusy;
   };
   function snapshot() {
-    return JSON.stringify([F.usage, F.remoteError, F.publicError, F.shared.map((s) => s.id + s.title), F.myShares.map((s) => s.id + s.title), F.publicFiles.map((p) => p.id + p.title + p.subject + p.exam_date), F.cloudOrphans.length]);
+    return JSON.stringify([F.usage, F.access, F.remoteError, F.publicError, F.shared.map((s) => s.id + s.title), F.myShares.map((s) => s.id + s.title), F.publicFiles.map((p) => p.id + p.title + p.subject + p.exam_date), F.cloudOrphans.length]);
   }
 
   /* ---------- Öffnen / Sichern ---------- */

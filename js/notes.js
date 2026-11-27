@@ -96,8 +96,9 @@
     else if (!S.user) cloud = `<p class="hint" style="margin:0 0 12px">Melde dich an, um Dateien in der Cloud zu speichern und mit anderen zu teilen. <button class="link-btn" data-action="login">Anmelden</button></p>`;
     else if (F.remoteError === 'setup') cloud = `<div class="note-warn">${ic('alert', 'i-sm')}<div><b>Online-Speicher noch nicht eingerichtet.</b> Einmal <code>supabase/lernzettel.sql</code> in Supabase ausführen. Bis dahin werden Dateien nur auf dem Gerät gespeichert.</div></div>`;
     else {
-      cloud = meter(pctOf(F.usedMine(), F.quota), `${ic('cloud', 'i-sm')} Deine Cloud`, `${PL.fmtBytes(F.usedMine())} von ${F.cfg.quotaMB} MB · max. ${F.cfg.maxFileMB} MB pro Datei`)
-        + (F.usage.total != null ? meter(pctOf(F.usage.total, F.total), `${ic('users', 'i-sm')} Alle zusammen`, `${PL.fmtBytes(F.usage.total)} von 1 GB · wird mit deinen Freunden geteilt`) : '');
+      cloud = (F.access === false ? `<div class="note-warn">${ic('alert', 'i-sm')}<div><b>Cloud-Speicher für dein Konto ausgeschaltet.</b> Neue Dateien werden nur auf dem Gerät gespeichert. Was schon in der Cloud liegt, bleibt erhalten.</div></div>` : '')
+        + meter(pctOf(F.usedMine(), F.quota), `${ic('cloud', 'i-sm')} Deine Cloud`, `${PL.fmtBytes(F.usedMine())} von ${F.cfg.quotaMB} MB · max. ${F.cfg.maxFileMB} MB pro Datei`)
+        + (F.usage.total != null ? meter(pctOf(F.usage.total, F.total), `${ic('users', 'i-sm')} Alle zusammen`, `${PL.fmtBytes(F.usage.total)} von ${PL.fmtBytes(F.total)} · wird mit deinen Freunden geteilt`) : '');
     }
     const est = F.estimate;
     const localN = Array.from(F.local.values()).filter((m) => (m.user || null) === (S.user ? S.user.id : null)).length;
@@ -259,7 +260,7 @@
 
   PL.addNotesSheet = function (opts = {}) {
     const subs = PL.sortedSubjects();
-    const cloudOk = F.canCloud() && F.remoteError !== 'setup';
+    const cloudOk = F.canUpload() && F.remoteError !== 'setup';
     const s = st().settings;
     const preExam = opts.examId ? st().events.find((e) => e.id === opts.examId) : null;
     const f = { files: [], subjectId: opts.subjectId || (preExam && preExam.subjectId) || null, examId: preExam ? preExam.id : null, public: false, mode: cloudOk ? (s.noteMode || 'both') : 'local', compress: s.compressPhotos !== false };
@@ -300,6 +301,7 @@
         const hintFor = () => {
           if (!F.canCloud()) return PL.sync.enabled ? 'Ohne Anmeldung nur auf diesem Gerät. Melde dich an für Cloud und Teilen.' : 'Nur auf diesem Gerät.';
           if (F.remoteError === 'setup') return 'Der Online-Speicher ist noch nicht eingerichtet – nur auf diesem Gerät.';
+          if (!F.canUpload()) return 'Für dein Konto ist der Cloud-Speicher ausgeschaltet – nur auf diesem Gerät.';
           return f.mode === 'local' ? 'Nur auf diesem Gerät – zählt nicht zu deinen Cloud-MB.'
             : `Cloud: noch ${PL.fmtBytes(F.freeMine())} von ${F.cfg.quotaMB} MB frei.` + (f.mode === 'cloud' ? ' Auf anderen Geräten kannst du ihn jederzeit lokal speichern.' : '');
         };
@@ -469,8 +471,8 @@
       ${PL.sync.enabled ? `<div class="opt-row"><div><div class="t">${ic('globe', 'i-sm')} Für alle teilen</div><div class="d">${pubHint}</div></div>
         <label class="switch"><input type="checkbox" data-public ${pub ? 'checked' : ''} ${pubOk || pub ? '' : 'disabled'}><span></span></label></div>` : ''}
       <div class="sec-title" style="margin-top:6px">Gespeichert</div>
-      <div class="opt-row"><div><div class="t">${ic('cloud', 'i-sm')} In der Cloud</div><div class="d">${!F.canCloud() ? 'Melde dich an, um online zu speichern' : F.remoteError === 'setup' ? 'Online-Speicher noch nicht eingerichtet' : note.cloud ? `Auf allen Geräten abrufbar · zählt ${PL.fmtBytes(note.size)} von deinen ${F.cfg.quotaMB} MB` : `Noch ${PL.fmtBytes(F.freeMine())} frei`}</div></div>
-        <label class="switch"><input type="checkbox" data-loc="cloud" ${note.cloud ? 'checked' : ''} ${cloudOk && (note.cloud || here) ? '' : 'disabled'}><span></span></label></div>
+      <div class="opt-row"><div><div class="t">${ic('cloud', 'i-sm')} In der Cloud</div><div class="d">${!F.canCloud() ? 'Melde dich an, um online zu speichern' : F.remoteError === 'setup' ? 'Online-Speicher noch nicht eingerichtet' : !note.cloud && !F.canUpload() ? 'Cloud-Speicher für dein Konto ausgeschaltet' : note.cloud ? `Auf allen Geräten abrufbar · zählt ${PL.fmtBytes(note.size)} von deinen ${F.cfg.quotaMB} MB` : `Noch ${PL.fmtBytes(F.freeMine())} frei`}</div></div>
+        <label class="switch"><input type="checkbox" data-loc="cloud" ${note.cloud ? 'checked' : ''} ${cloudOk && (note.cloud || (here && F.canUpload())) ? '' : 'disabled'}><span></span></label></div>
       <div class="opt-row"><div><div class="t">${ic('device', 'i-sm')} Auf diesem Gerät</div><div class="d">${esc(F.device.name)} · ${here ? 'auch offline verfügbar' : note.cloud ? 'aus der Cloud herunterladen' : 'nicht verfügbar'}</div></div>
         <label class="switch"><input type="checkbox" data-loc="here" ${here ? 'checked' : ''} ${here || note.cloud ? '' : 'disabled'}><span></span></label></div>
       ${others.length ? `<div class="opt-row"><div><div class="t">Auch lokal auf</div><div class="d">${others.map((d) => esc(F.deviceName(d))).join(', ')}</div></div></div>` : ''}

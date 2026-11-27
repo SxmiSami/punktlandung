@@ -45,8 +45,8 @@ Damit Lernzettel online gespeichert und geteilt werden können:
 2. Den kompletten Inhalt der Datei [`supabase/lernzettel.sql`](supabase/lernzettel.sql) einfügen.
 3. Auf **„Run“** klicken. Es sollte „Success. No rows returned“ erscheinen.
 
-Das legt den privaten Speicher „lernzettel“ an, begrenzt ihn auf **250 MB pro Person** und **25 MB pro Datei** und erlaubt das Teilen mit Freunden per E-Mail-Adresse.
-Der kostenlose Plan hat **1 GB für alle zusammen**, also bei 4 Personen je 250 MB. Wer mehr braucht, kann einzelne Zettel „nur lokal“ speichern.
+Das legt den privaten Speicher „lernzettel“ an, begrenzt ihn auf **65 MB pro Person**, **900 MB für alle zusammen** und **25 MB pro Datei** und erlaubt das Teilen mit Freunden per E-Mail-Adresse.
+Der kostenlose Plan hat **1 GB für alle zusammen**. Die Grenzen sind auf 10 Personen ausgelegt und lassen etwas Puffer; auch mit mehr Konten wird das 1 GB nicht überschritten, weil Uploads ab 875 MB insgesamt abgelehnt werden. Außerdem dürfen höchstens **10 Konten** Dateien in die Cloud laden: beim ersten Ausführen werden die 10 ältesten Konten freigeschaltet, danach schaltest du das im Admin-Bereich (Einstellungen → Admin → Konten & Cloud-Zugriff) pro Konto ein oder aus. Danach auch `supabase/admin.sql` noch einmal ausführen. Wer mehr braucht, kann einzelne Zettel „nur lokal“ speichern.
 
 ## 6. Chat einrichten
 

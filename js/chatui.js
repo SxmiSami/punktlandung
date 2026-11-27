@@ -512,7 +512,7 @@
         const body = sh.querySelector('[data-body]');
         const msg = sh.querySelector('[data-msg]');
         const show = (t, ok) => { msg.hidden = !t; msg.textContent = t || ''; msg.classList.toggle('ok', !!ok); };
-        const cloudOk = F.canCloud() && F.remoteError !== 'setup';
+        const cloudOk = F.canUpload() && F.remoteError !== 'setup';
         const draw = () => {
           sh.querySelectorAll('[data-seg] button').forEach((b) => b.classList.toggle('on', b.dataset.v === cur));
           if (cur === 'note') {

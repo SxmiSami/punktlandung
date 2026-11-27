@@ -7,10 +7,11 @@ window.PL_CONFIG = {
   supabaseAnonKey: 'sb_publishable_jvnIIUVtss5IG27f01JB4Q_5DX3o3SK', // Publishable key (öffentlich)
 
   // Lernzettel-Speicher (kostenloser Supabase-Plan: 1 GB für alle zusammen).
-  // Bei Änderungen auch die 250 MB in supabase/lernzettel.sql anpassen.
+  // Ausgelegt auf 10 Personen: 65 MB pro Person, 900 MB alle zusammen (Puffer zum 1 GB).
+  // Bei Änderungen auch die Grenzen in supabase/lernzettel.sql anpassen.
   // GIFs im Chat: kostenloser Schlüssel von https://developers.giphy.com (siehe SYNC-EINRICHTEN.md, GIFs).
   // Leer lassen = GIF-Suche aus (GIF-Links von GIPHY/Tenor werden trotzdem als Bild gezeigt).
   giphyKey: 'Z4tKyvjaKXIbXsitqq7jDHcPpmxRyf2u',
 
-  notes: { bucket: 'lernzettel', quotaMB: 250, totalMB: 1024, maxFileMB: 25 },
+  notes: { bucket: 'lernzettel', quotaMB: 65, totalMB: 900, maxFileMB: 25, maxCloudUsers: 10 },
 };

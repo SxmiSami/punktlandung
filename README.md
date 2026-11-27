@@ -42,7 +42,7 @@ Der **Chat** liegt nur online (Tabellen aus `supabase/chat.sql`) und ist nicht i
 
 Ohne Konto kannst du Daten über **Einstellungen → Backup exportieren / importieren** übertragen.
 
-**Lernzettel** liegen auf Wunsch lokal im Browser (IndexedDB) und/oder im Supabase-Speicher (250 MB pro Person, 25 MB pro Datei, Fotos werden auf 2000 px verkleinert). Das Backup enthält nur die Einträge, nicht die Dateien selbst.
+**Lernzettel** liegen auf Wunsch lokal im Browser (IndexedDB) und/oder im Supabase-Speicher (65 MB pro Person, 900 MB für alle zusammen, 25 MB pro Datei, Fotos werden auf 2000 px verkleinert). Das Backup enthält nur die Einträge, nicht die Dateien selbst.
 
 ## Lokal starten
 
