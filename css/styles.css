@@ -740,7 +740,6 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
   min-height: calc(100dvh - var(--safe-t) - var(--safe-b) - 40px);
   display: flex; flex-direction: column;
 }
-@media (min-width: 960px) { .onb { min-height: calc(100dvh - 100px); justify-content: center; } }
 .onb-brand { display: flex; align-items: center; gap: 10px; margin: 8px 0 34px; }
 .onb-brand .brand-mark { width: 32px; height: 32px; border-radius: 9px; }
 .onb-brand .brand-name { font-size: 19px; }
@@ -752,6 +751,7 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
 .onb-card-front small { font-size: 13px; font-weight: 600; color: var(--muted); }
 .onb-card-front b { font-family: var(--display); font-size: 58px; font-weight: 800; letter-spacing: -.045em; line-height: 1; margin: 4px 0 6px; }
 .onb-card-back { width: 230px; padding: 12px 14px; transform: rotate(5deg) translate(46px, -74px); display: flex; align-items: center; gap: 10px; }
+.onb-card-third { display: none; }
 .onb-card-back .subj-code { width: 38px; height: 38px; font-size: 14px; }
 .onb-card-back div { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 15px; }
 .onb-card-back small { font-size: 12.5px; color: var(--muted); }
@@ -766,6 +766,40 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
 .onb-back:hover { background: var(--card); }
 .onb-back .i { width: 24px; height: 24px; }
 .onb-page { max-width: 760px; }
+/* Am Computer: zwei Spalten – links Text und Knöpfe, rechts eine große Bildfläche */
+@media (min-width: 960px) {
+  /* Ohne Fächer gibt es noch nichts zu navigieren: Seitenleiste ausblenden */
+  .no-tabbar .app { display: block; }
+  .no-tabbar .sidebar { display: none; }
+  .onb {
+    max-width: 1120px; min-height: calc(100dvh - 100px);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); column-gap: 72px;
+    grid-template-rows: 1fr auto auto auto auto 1fr;
+    grid-template-areas: ". art" "brand art" "title art" "sub art" "actions art" ". art";
+    align-items: start;
+  }
+  .onb-brand { grid-area: brand; margin: 0 0 40px; }
+  .onb-title { grid-area: title; font-size: 60px; letter-spacing: -.04em; line-height: 1.02; margin-bottom: 16px; }
+  .onb-sub { grid-area: sub; font-size: 18px; max-width: 460px; }
+  .onb-actions { grid-area: actions; margin-top: 36px; max-width: 400px; }
+  .onb-links { justify-content: flex-start; }
+  .onb-version { text-align: left; }
+  .onb-art {
+    grid-area: art; align-self: center; height: min(620px, calc(100dvh - 160px)); margin: 0;
+    border-radius: 36px; background: var(--bg-soft); border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .onb-card { zoom: 1.45; }
+  .onb-card-third {
+    display: flex; flex-direction: column; gap: 2px; width: 190px; padding: 14px 16px;
+    transform: rotate(-2deg) translate(70px, 150px);
+  }
+  .onb-card-third small { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .onb-card-third b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .onb-card-third span { font-size: 13px; color: var(--accent-2); font-weight: 600; }
+  .onb-card-front { transform: rotate(-4deg) translate(-44px, 0); }
+  .onb-card-back { transform: rotate(5deg) translate(40px, -118px); }
+}
 
 .steps { display: flex; gap: 6px; margin-bottom: 22px; max-width: 220px; }
 .steps i { height: 4px; flex: 1; border-radius: 99px; background: var(--card-3); }

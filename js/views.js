@@ -35,6 +35,11 @@
           <div><b>Mathe</b><small>Klausur · Q1.1</small></div>
           <span class="gb" data-tier="1">13</span>
         </div>
+        <div class="onb-card onb-card-third">
+          <small>Nächste Klausur</small>
+          <b>Mo, 1. Dez</b>
+          <span>Deutsch · in 4 Tagen</span>
+        </div>
         <div class="onb-card onb-card-front">
           <small>Abiturschnitt</small>
           <b>1,8</b>
