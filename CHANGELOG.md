@@ -1,7 +1,15 @@
 # Änderungen
 
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
-Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen.
+Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen – und in `js/data.js` bei `PL.CHANGELOG` einen kurzen Eintrag für „Was ist neu“ ergänzen.
+
+## 0.14.0
+- **GIFs im Chat**: Neben dem Eingabefeld gibt es einen „GIF“-Knopf. Dort GIFs suchen (mit Schnellwörtern wie „Danke“, „Haha“, „Prüfung“) oder die beliebtesten ansehen und mit einem Tipp senden
+  - Braucht einen kostenlosen GIPHY-Schlüssel in `js/config.js` (`giphyKey`, siehe SYNC-EINRICHTEN.md → „GIFs im Chat“). In Supabase muss nichts geändert werden
+  - Ein GIF wird als Nachricht mit dem Link gespeichert: ältere App-Versionen zeigen den Link, und ein eingefügter GIPHY-/Tenor-Link wird auch als GIF angezeigt
+- **Was ist neu**: Nach einem Update erscheint beim ersten Öffnen einmal eine kurze Übersicht der Änderungen – einmal pro Konto, also nicht auf jedem Gerät neu. Neue Nutzer sehen sie nicht. Unter **Einstellungen** ganz unten lässt sie sich wieder öffnen
+- **Begrüßung**: Auf der Übersicht steht statt „Hey, …“ jetzt die Begrüßung nach Tageszeit („Guten Morgen“, „Hallo“, „Guten Abend“, „Gute Nacht“) mit deinem Vornamen. Darüber steht das Datum
+- **iPhone-Widget** (über Scriptable): Abischnitt, Termine, Aufgaben und ein Stundenplan-Widget, siehe `widget/WIDGET-EINRICHTEN.md`
 
 ## 0.13.0
 - **OneNote-Seite an Hausaufgaben**: Beim Eintragen oder Bearbeiten einer Hausaufgabe lässt sich ein Link zu einer OneNote-Seite einfügen (in OneNote: Seite rechts anklicken bzw. gedrückt halten → „Link zu Seite kopieren“). Das OneNote-Symbol an der Aufgabe öffnet die Seite direkt in der OneNote-App, in der Aufgabe gibt es auch „Im Browser“

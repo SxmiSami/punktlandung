@@ -68,6 +68,9 @@
     if (/pl_already/.test(m)) return 'Diese Person ist schon in der Gruppe.';
     if (/pl_not_member/.test(m)) return 'Du bist nicht mehr in diesem Chat.';
     if (/pl_not_signed_in/.test(m)) return 'Bitte melde dich zuerst an.';
+    if (/pl_no_gif_key/.test(m)) return 'GIFs sind noch nicht eingerichtet (GIPHY-Schlüssel in js/config.js, siehe SYNC-EINRICHTEN.md).';
+    if (/pl_gif_key/.test(m)) return 'Der GIPHY-Schlüssel in js/config.js funktioniert nicht.';
+    if (/pl_gif_net/.test(m)) return 'GIFs konnten nicht geladen werden. Bist du online?';
     if (setupMissing(m)) return 'Der Chat ist noch nicht eingerichtet (supabase/chat.sql in Supabase ausführen).';
     if (/object not found|not_found|404/i.test(m)) return 'Dieser Zettel ist nicht mehr in der Cloud.';
     return PL.files ? PL.files.err(e) : (m || 'Unbekannter Fehler.');
@@ -277,6 +280,40 @@
     });
   };
 
+  /* ---------- GIFs (Suche über GIPHY) ----------
+     Ein GIF ist eine normale Text-Nachricht: Text = Link zum GIF (ältere App-Versionen zeigen den Link),
+     payload.gif = Bild für die Anzeige. Angezeigt werden nur Bilder von GIPHY und Tenor. */
+  const GIF_URL = /^https:\/\/(?:media\d*\.giphy\.com|i\.giphy\.com|media\d*\.tenor\.com)\/[^\s"'<>]+$/i;
+  C.gifOf = function (m) {
+    if (!m || m.kind !== 'text') return null;
+    const g = m.payload && m.payload.gif;
+    if (g && GIF_URL.test(g.url || '')) return { url: g.url, w: Number(g.w) || 0, h: Number(g.h) || 0, title: String(g.title || '') };
+    // Nur ein GIF-Link als Text (z. B. aus GIPHY kopiert)
+    const t = String(m.body || '').trim();
+    if (GIF_URL.test(t) && /\.(gif|webp)(\?|$)/i.test(t)) return { url: t, w: 0, h: 0, title: '' };
+    const page = t.match(/^https:\/\/giphy\.com\/gifs\/(?:[\w-]*-)?([A-Za-z0-9]{6,})\/?$/);
+    if (page) return { url: `https://media.giphy.com/media/${page[1]}/giphy.gif`, w: 0, h: 0, title: '' };
+    return null;
+  };
+  C.gifReady = () => !!(window.PL_CONFIG || {}).giphyKey;
+  C.gifSearch = async function (q, offset) {
+    const key = (window.PL_CONFIG || {}).giphyKey;
+    if (!key) throw new Error('pl_no_gif_key');
+    const p = new URLSearchParams({ api_key: key, limit: '24', offset: String(offset || 0), rating: 'pg-13', bundle: 'messaging_non_clips' });
+    if (q) { p.set('q', q); p.set('lang', 'de'); }
+    let res;
+    try { res = await fetch(`https://api.giphy.com/v1/gifs/${q ? 'search' : 'trending'}?${p}`); } catch (e) { throw new Error('pl_gif_net'); }
+    if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'pl_gif_key' : 'pl_gif_net');
+    const j = await res.json();
+    const list = (j.data || []).map((g) => {
+      const i = (g.images || {}).fixed_width || {};
+      return { id: g.id, title: String(g.title || '').replace(/\s+GIF.*$/i, ''), url: i.webp || i.url, gif: i.url, w: Number(i.width) || 0, h: Number(i.height) || 0 };
+    }).filter((g) => GIF_URL.test(g.url || '') && GIF_URL.test(g.gif || ''));
+    const pg = j.pagination || {};
+    return { list, more: (pg.offset || 0) + (pg.count || 0) < (pg.total_count || 0) };
+  };
+  C.sendGif = (chatId, g) => C.send(chatId, 'text', g.gif, { gif: { id: g.id, url: g.url, w: g.w, h: g.h, title: g.title, src: 'giphy' } });
+
   C.markRead = (function () {
     const timers = {};
     return function (chatId) {
@@ -354,6 +391,7 @@
     if (m.kind === 'system') return C.systemText(m, chat.id);
     const text = m.kind === 'note' ? 'Lernzettel: ' + ((m.payload || {}).title || '')
       : m.kind === 'event' ? 'Termin: ' + eventLabel(m.payload || {})
+      : C.gifOf(m) ? 'GIF'
       : String(m.body || '').replace(/\s+/g, ' ');
     if (noName) return text;
     if (m.sender === me()) return 'Du: ' + text;

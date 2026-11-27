@@ -2,7 +2,24 @@
 window.PL = window.PL || {};
 
 /* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
-PL.VERSION = '0.13.0';
+PL.VERSION = '0.14.0';
+
+/* „Was ist neu“ – erscheint nach einem Update einmal pro Konto (neueste Version zuerst).
+   Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional */
+PL.CHANGELOG = [
+  { v: '0.14.0', items: [
+    { icon: 'chat', title: 'GIFs im Chat', text: 'Tippe neben dem Eingabefeld auf „GIF“, such dir eins aus und schick es direkt los.' },
+    { icon: 'sparkle', title: 'Was ist neu', text: 'Nach einem Update siehst du einmal kurz, was sich geändert hat. Unter Einstellungen kannst du es jederzeit wieder aufrufen.' },
+    { icon: 'home', title: 'Passende Begrüßung', text: 'Die Übersicht sagt dir jetzt „Guten Morgen“, „Hallo“ oder „Guten Abend“, je nach Tageszeit.' },
+    { icon: 'device', title: 'iPhone-Widget', text: 'Abischnitt, Termine, Aufgaben und dein Stundenplan auf dem Home-Bildschirm, über die kostenlose App Scriptable.', link: ['Anleitung', 'https://github.com/SxmiSami/punktlandung/blob/main/widget/WIDGET-EINRICHTEN.md'] },
+  ] },
+  { v: '0.13.0', items: [
+    { icon: 'notebook', title: 'OneNote-Seite an Hausaufgaben', text: 'Hänge einen Link zu einer OneNote-Seite an eine Hausaufgabe und öffne sie mit einem Tipp in der OneNote-App.' },
+  ] },
+  { v: '0.12.0', items: [
+    { icon: 'calendar', title: 'Termine neu gestaltet', text: 'Nächste Prüfung mit Countdown, Monatskalender in Fachfarben und eine Liste nach Monaten.' },
+  ] },
+];
 
 /* Standard-Stundenzeiten (in den Einstellungen änderbar) */
 PL.DEFAULT_PERIODS = [
@@ -121,7 +138,7 @@ PL.demoState = function () {
 
   return {
     version: 1,
-    settings: Object.assign(PL.defaultSettings(), { name: 'Alex', currentSem: 2, abWeeks: true, abRef: PL.isoDate(PL.mondayOf(today)) }),
+    settings: Object.assign(PL.defaultSettings(), { seenVersion: PL.VERSION, name: 'Alex', currentSem: 2, abWeeks: true, abRef: PL.isoDate(PL.mondayOf(today)) }),
     lessons,
     tasks,
     subjects,

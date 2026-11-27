@@ -58,6 +58,16 @@ Damit ihr euch in der App schreiben könnt (einzeln oder in Gruppen):
 
 Das legt die Tabellen für Chats und Nachrichten an. Nachrichten sieht nur, wer im Chat ist. Lernzettel, die in einen Chat geschickt werden, dürfen alle im Chat öffnen. Neue Nachrichten kommen sofort an (Supabase Realtime); falls Realtime nicht geht, holt die App sie alle 20 Sekunden.
 
+### GIFs im Chat (optional)
+
+Für die GIF-Suche im Chat braucht die App einen kostenlosen Schlüssel von GIPHY:
+
+1. Auf [developers.giphy.com](https://developers.giphy.com/dashboard/) ein Konto anlegen und **„Create an API Key“** wählen.
+2. **„API“** (nicht „SDK“) auswählen, einen Namen wie „Punktlandung“ eingeben und bestätigen.
+3. Den angezeigten Schlüssel in [`js/config.js`](js/config.js) bei `giphyKey: '…'` einfügen.
+
+In der Datenbank muss dafür nichts geändert werden: Ein GIF wird als normale Nachricht mit dem Link zum GIF gespeichert. Ältere App-Versionen zeigen deshalb den Link. Der GIPHY-Schlüssel ist (wie der Supabase-Schlüssel) öffentlich im Code sichtbar. Der kostenlose „Beta“-Schlüssel erlaubt nur eine begrenzte Zahl Suchen pro Stunde, für eine Schulklasse reicht das. Gesucht wird direkt bei GIPHY, die Suchbegriffe gehen also an GIPHY.
+
 ## 7. Untis einrichten (optional)
 
 Damit die App deinen Stundenplan aus WebUntis holen und Ausfälle anzeigen kann, braucht Supabase einen kleinen Vermittler (eine „Edge Function“). WebUntis lässt Abfragen direkt aus dem Browser nämlich nicht zu.

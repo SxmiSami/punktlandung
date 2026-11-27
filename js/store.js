@@ -28,11 +28,12 @@
     untisExams: true,       // Klausuren aus Untis als Termine übernehmen
     untisHomework: true,    // Hausaufgaben aus Untis übernehmen
     untisSeen: [],          // schon übernommene Untis-Einträge (gelöschte kommen nicht wieder)
+    seenVersion: null,      // „Was ist neu“ zuletzt gesehen für diese Version (pro Konto, wird synchronisiert)
   });
 
   PL.emptyState = () => ({
     version: 1,
-    settings: PL.defaultSettings(),
+    settings: Object.assign(PL.defaultSettings(), { seenVersion: PL.VERSION }),  // neu: kein „Was ist neu“
     subjects: [],
     grades: [],
     overrides: {},

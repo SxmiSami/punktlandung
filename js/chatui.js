@@ -75,7 +75,7 @@
     const list = C.msgs[chat.id];
     if (!list) return `<div class="msg-sys">Nachrichten werden geladen …</div>`;
     let h = C.more[chat.id] ? `<button type="button" class="btn btn-sm msg-more" data-action="chat-older" data-id="${chat.id}">Ältere Nachrichten laden</button>` : '';
-    if (!list.length) h += `<div class="msg-empty">${ic('chat', 'i-lg')}<b>Noch keine Nachrichten</b><span>Schreib die erste – oder schick über ${ic('plus', 'i-sm')} einen Lernzettel oder Klausurtermin.</span></div>`;
+    if (!list.length) h += `<div class="msg-empty">${ic('chat', 'i-lg')}<b>Noch keine Nachrichten</b><span>Schreib die erste, schick ein GIF – oder über ${ic('plus', 'i-sm')} einen Lernzettel oder Klausurtermin.</span></div>`;
     let lastDay = '';
     list.forEach((m, i) => {
       const d = dayKey(m.created_at);
@@ -90,8 +90,14 @@
     const mine = m.sender === me();
     const name = chat.isGroup && !mine && first ? `<div class="msg-name" style="--c:${C.memberColor(m.sender)}">${esc(C.nameOf(chat.id, m.sender, m.sender_name))}</div>` : '';
     const t = `<span class="t">${m.pending ? ic('clock') : ''}${timeOf(m.created_at)}</span>`;
-    const inner = m.kind === 'note' ? noteCard(m, t) : m.kind === 'event' ? eventCard(m, t) : `<div class="bubble">${linkify(m.body)}${t}</div>`;
+    const gif = C.gifOf(m);
+    const inner = m.kind === 'note' ? noteCard(m, t) : m.kind === 'event' ? eventCard(m, t) : gif ? gifCard(gif, t) : `<div class="bubble">${linkify(m.body)}${t}</div>`;
     return `<div class="msg ${mine ? 'mine' : ''} ${first ? 'first' : ''} ${last ? 'tail' : ''} ${m.failed ? 'failed' : ''}" data-msg="${m.id}">${name}${inner}${m.failed ? `<span class="msg-fail">${ic('alert')} Nicht gesendet – antippen</span>` : ''}</div>`;
+  }
+
+  function gifCard(g, t) {
+    const ratio = g.w && g.h ? ` style="aspect-ratio:${g.w}/${g.h}"` : '';
+    return `<div class="bubble gif-msg"><img src="${esc(g.url)}" alt="${esc(g.title || 'GIF')}"${ratio} loading="lazy" decoding="async" referrerpolicy="no-referrer">${t}</div>`;
   }
 
   function noteCard(m, t) {
@@ -126,6 +132,7 @@
       <div class="chat-scroll" data-chat-scroll><div class="msgs" data-chat-msgs>${msgsHtml(chat)}</div></div>
       <form class="chat-compose" data-chat-form autocomplete="off">
         <button type="button" class="icon-btn" data-action="chat-attach" data-id="${chat.id}" aria-label="Lernzettel oder Termin senden" title="Lernzettel oder Termin senden" ${chat.stub ? 'disabled' : ''}>${ic('plus')}</button>
+        <button type="button" class="icon-btn gif-btn" data-action="chat-gif" data-id="${chat.id}" aria-label="GIF senden" title="GIF senden" ${chat.stub ? 'disabled' : ''}>GIF</button>
         <textarea class="input" data-chat-input rows="1" maxlength="2000" placeholder="Nachricht" aria-label="Nachricht" enterkeyhint="send"></textarea>
         <button type="submit" class="icon-btn chat-send" aria-label="Senden" data-send>${ic('send')}</button>
       </form>`;
@@ -201,6 +208,8 @@
       stickBottom = true;
       C.send(id, 'text', text).catch((err) => PL.toast(C.err(err)));
     }
+    // GIFs laden nach – unten bleiben, wenn man unten war
+    msgs.addEventListener('load', (e) => { if (e.target.tagName === 'IMG' && stickBottom) sc.scrollTop = sc.scrollHeight; }, true);
     sc.addEventListener('scroll', () => { stickBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 120; }, { passive: true });
     sc.addEventListener('click', (e) => {
       if (e.target.closest('a, button')) return;
@@ -276,7 +285,7 @@
       <div class="msg-quote">${esc(C.preview(m, chat, true))}</div>
       <div class="sheet-foot col">
         ${m.failed ? `<button type="button" class="btn btn-primary" data-retry>${ic('refresh', 'i-sm')} Erneut senden</button>` : ''}
-        ${m.kind === 'text' && navigator.clipboard ? `<button type="button" class="btn" data-copy>Text kopieren</button>` : ''}
+        ${m.kind === 'text' && !C.gifOf(m) && navigator.clipboard ? `<button type="button" class="btn" data-copy>Text kopieren</button>` : ''}
         <button type="button" class="btn btn-danger" data-del>${ic('trash', 'i-sm')} ${m.failed ? 'Verwerfen' : 'Für alle löschen'}</button>
       </div>`, {
       onMount(sh) {
@@ -512,6 +521,67 @@
     });
   };
 
+  /* GIF suchen und senden */
+  const GIF_TAGS = ['Danke', 'Haha', 'Ja', 'Nein', 'OMG', 'Müde', 'Lernen', 'Prüfung', 'Geschafft', 'Party', 'Hallo', 'Sorry'];
+  PL.chatGifSheet = function (chatId) {
+    const chat = C.chat(chatId);
+    if (!chat) return;
+    PL.openSheet(`${PL.sheetHead('GIF senden', 'an ' + esc(C.title(chat)))}
+      <div class="field" style="margin-bottom:10px"><input class="input" type="search" data-q placeholder="GIFs suchen" aria-label="GIFs suchen" enterkeyhint="search" autocomplete="off" maxlength="50" autofocus></div>
+      <div class="chips" data-tags style="margin-bottom:12px">${GIF_TAGS.map((t) => `<button type="button" class="chip" data-tag="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      <div class="gif-grid" data-grid></div>
+      <div data-status></div>
+      <div class="gif-foot">Powered by GIPHY</div>`, {
+      wide: true,
+      onMount(sh) {
+        const input = sh.querySelector('[data-q]');
+        const grid = sh.querySelector('[data-grid]');
+        const status = sh.querySelector('[data-status]');
+        let q = '', offset = 0, req = 0, timer = null, sending = false;
+        const tile = (g) => `<button type="button" class="gif-tile" data-gif="${esc(g.id)}" aria-label="${esc(g.title || 'GIF')} senden"${g.w && g.h ? ` style="aspect-ratio:${g.w}/${g.h}"` : ''}><img src="${esc(g.url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button>`;
+        const found = new Map();
+        async function load(more) {
+          const my = ++req;
+          if (!more) { offset = 0; found.clear(); grid.innerHTML = ''; }
+          status.innerHTML = `<div class="gif-msg-line">GIFs werden geladen …</div>`;
+          try {
+            const res = await C.gifSearch(q, offset);
+            if (my !== req || !sh.isConnected) return;
+            res.list.forEach((g) => found.set(g.id, g));
+            grid.insertAdjacentHTML('beforeend', res.list.map(tile).join(''));
+            offset += res.list.length;
+            status.innerHTML = !found.size ? `<div class="gif-msg-line">Keine GIFs zu „${esc(q)}“ gefunden</div>`
+              : res.more && res.list.length ? `<button type="button" class="btn btn-sm" data-more style="display:flex;margin:12px auto 0">Mehr laden</button>` : '';
+          } catch (e) {
+            if (my !== req) return;
+            status.innerHTML = `<div class="note-warn" style="margin-top:4px">${ic('alert', 'i-sm')}<div>${esc(C.err(e))}</div></div>`;
+          }
+        }
+        input.addEventListener('input', () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => { const v = input.value.trim(); if (v !== q) { q = v; load(false); } }, 350);
+        });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); q = input.value.trim(); load(false); input.blur(); } });
+        sh.querySelector('[data-tags]').addEventListener('click', (e) => {
+          const b = e.target.closest('[data-tag]'); if (!b) return;
+          input.value = q = b.dataset.tag;
+          load(false);
+        });
+        status.addEventListener('click', (e) => { const b = e.target.closest('[data-more]'); if (b) { b.disabled = true; load(true); } });
+        grid.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-gif]');
+          const g = b && found.get(b.dataset.gif);
+          if (!g || sending) return;
+          sending = true;
+          PL.closeSheet();
+          stickBottom = true;
+          C.sendGif(chatId, g).catch((err) => PL.toast(C.err(err)));
+        });
+        load(false);
+      },
+    });
+  };
+
   /* Chat auswählen (z. B. aus einem Termin heraus) */
   PL.chatPickSheet = function (title, sub, onPick) {
     if (!S().user) { PL.authSheet('login'); return; }
@@ -562,6 +632,7 @@
     'chat-reload': () => { C.error = null; C.refresh().then(() => PL.render()); },
     'chat-info': (d) => PL.chatInfoSheet(d.id),
     'chat-attach': (d) => PL.chatAttachSheet(d.id),
+    'chat-gif': (d) => PL.chatGifSheet(d.id),
     'chat-older': (d, el) => {
       el.disabled = true; el.textContent = 'Lädt …';
       stickBottom = false;

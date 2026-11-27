@@ -141,9 +141,12 @@
   PL.views.dashboard = function () {
     const s = st().settings;
     const avg = PL.overallAvg();
-    const name = s.name ? `Hey, ${esc(s.name)}` : 'Übersicht';
-    const hour = new Date().getHours();
-    const greet = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Schön, dass du da bist' : 'Guten Abend';
+    // Begrüßung nach Tageszeit als Überschrift, darüber das Datum
+    const now = new Date(), hour = now.getHours();
+    const greet = hour < 5 ? 'Noch wach' : hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Hallo' : hour < 23 ? 'Guten Abend' : 'Gute Nacht';
+    const first = (s.name || '').trim().split(/\s+/)[0];
+    const name = first ? `${greet}, ${esc(first)}${hour < 5 ? '?' : ''}` : `${greet}${hour < 5 ? '?' : ''}`;
+    const dateLine = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 
     const semRows = [0, 1, 2, 3].map((i) => {
       const a = PL.overallAvg(i);
@@ -163,7 +166,7 @@
     const subs = PL.sortedSubjects();
 
     return `<div class="page view">
-      ${pageHead(`${semPill()}<span>${greet}</span>`, name, (PL.feedBell ? PL.feedBell() : '') + settingsBtnHtml())}
+      ${pageHead(`${semPill()}<span>${dateLine}</span>`, name, (PL.feedBell ? PL.feedBell() : '') + settingsBtnHtml())}
       <div class="grid grid-dash">
         <div class="span-2">${heroCard({ link: true })}</div>
         ${PL.feedCard ? PL.feedCard() : ''}
@@ -523,7 +526,8 @@
           <div class="card-head"><h2 class="card-title">${ic('info')} Als App installieren</h2></div>
           <p style="margin:0;color:var(--text-2);font-size:14px"><b>iPhone/iPad:</b> In Safari auf „Teilen“ → „Zum Home-Bildschirm“.<br><b>Android:</b> Im Chrome-Menü „App installieren“.<br><b>PC:</b> In Chrome/Edge auf das Installieren-Symbol in der Adressleiste.</p>
         </section>
-        <div class="about"><span class="brand-mark" aria-hidden="true"></span><div><b>Punktlandung</b><span>Version ${PL.VERSION}</span></div></div>
+        <div class="about"><span class="brand-mark" aria-hidden="true"></span><div><b>Punktlandung</b><span>Version ${PL.VERSION}</span></div>
+          ${PL.whatsNewSheet ? `<button class="btn btn-sm" data-action="whats-new">${ic('sparkle', 'i-sm')} Was ist neu</button>` : ''}</div>
       </div>
     </div>`;
   };

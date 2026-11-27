@@ -230,6 +230,7 @@
 
   S.client.auth.onAuthStateChange((event, session) => {
     S.user = session ? session.user : null;
+    S.authReady = true;  // Anmeldestatus ist bekannt (für „Was ist neu“)
     // Supabase-Aufrufe nicht direkt im Callback ausführen
     setTimeout(() => {
       if (event === 'PASSWORD_RECOVERY') PL.newPasswordSheet();
