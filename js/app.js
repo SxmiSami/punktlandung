@@ -27,10 +27,19 @@
     document.getElementById('sideNav').innerHTML = nav.map((n) =>
       `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}${count(n)}</a>`).join('');
     const ver = document.getElementById('sideVersion');
-    if (ver) ver.textContent = 'Version ' + PL.VERSION;
+    if (ver) ver.textContent = '';
+    const sn = document.getElementById('sideNews');
+    if (sn) { sn.hidden = !PL.whatsNewSheet; sn.innerHTML = `<span class="ico">${ic('sparkle', 'i-sm')}</span><span><b>Was ist neu</b><small>Version ${PL.VERSION}</small></span>`; }
     document.querySelectorAll('[data-nav="einstellungen"]').forEach((a) => a.classList.toggle('active', active === 'einstellungen'));
     const ss = document.getElementById('sideSettings');
-    if (ss) ss.innerHTML = `${ic('settings')} Einstellungen ${PL.sync.user ? `<span class="count" style="display:flex;align-items:center;gap:6px">${PL.syncDot().replace('sync-dot', 'sync-dot static')}</span>` : ''}`;
+    if (ss) {
+      // Konto-Zeile unten: Initiale, Name und Konto bzw. „Nur auf diesem Gerät“, führt zu den Einstellungen
+      const nm = (PL.state.settings.name || '').trim();
+      const mail = PL.sync.user ? (PL.sync.user.email || '') : '';
+      const initial = (nm || mail).charAt(0).toUpperCase();
+      ss.innerHTML = `<span class="avatar">${initial ? PL.esc(initial) : ic('settings', 'i-sm')}</span><span class="who"><b>${PL.esc(nm || 'Einstellungen')}</b><small>${PL.esc(mail || 'Nur auf diesem Gerät')}</small></span>${PL.sync.user ? PL.syncDot().replace('sync-dot', 'sync-dot static') : ''}${initial ? ic('settings', 'i-sm') : ''}`;
+      ss.setAttribute('aria-label', 'Einstellungen');
+    }
     const tb = document.getElementById('tabbar');
     tb.style.display = hidden ? 'none' : '';
     document.body.classList.toggle('no-tabbar', hidden);
@@ -116,6 +125,7 @@
   /* ---------- Aktionen ---------- */
   const A = {
     'close-sheet': () => PL.closeSheet(),
+    'settings-tab': (d) => { PL.ui.setTab = d.v; render(); },
     // ☰ in der Tab-Leiste: übrige Seiten und Einstellungen
     'nav-menu': () => {
       const r = route();

@@ -114,9 +114,13 @@ a { color: inherit; text-decoration: none; }
     position: sticky; top: 0; height: 100dvh;
     padding: calc(var(--safe-t) + 26px) 18px calc(var(--safe-b) + 22px);
     border-right: 1px solid var(--line);
-    background: var(--bg-soft);
+    background: var(--card);
   }
   .main { padding: calc(var(--safe-t) + 34px) 40px calc(var(--safe-b) + 60px); }
+  /* Am Computer ruhigere Überschriften */
+  .page-title { font-size: 34px !important; letter-spacing: -.025em; }
+  .card-title { font-size: 17px; font-weight: 700; }
+  .eyebrow { font-size: 14px; }
   .tabbar { display: none !important; }
 }
 
@@ -131,18 +135,50 @@ a { color: inherit; text-decoration: none; }
 .brand-name { font-family: var(--display); font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
 .brand-name span { color: var(--accent-2); }
 
-.side-nav { display: flex; flex-direction: column; gap: 4px; }
+.side-nav { display: flex; flex-direction: column; gap: 2px; }
 .side-link {
   display: flex; align-items: center; gap: 12px;
-  padding: 11px 12px; border-radius: 13px;
-  color: var(--text-2); font-weight: 600;
+  padding: 9px 12px; border-radius: 10px;
+  color: var(--text-2); font-weight: 500; font-size: 14.5px;
   transition: background .15s, color .15s;
 }
-.side-link:hover { background: var(--card); color: var(--text); }
-.side-link.active { background: var(--accent-soft); color: var(--text); }
+.side-link .i { width: 18px; height: 18px; }
+.side-link:hover { background: var(--card-2); color: var(--text); }
+.side-link.active { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
 .side-link.active .i { color: var(--accent-2); }
 .side-link .count { margin-left: auto; font-size: 12px; color: var(--muted); }
-.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+/* „Was ist neu“-Karte und Konto-Zeile unten in der Seitenleiste */
+.side-news {
+  display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+  padding: 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--accent-soft); color: var(--text);
+}
+.side-news[hidden] { display: none; }
+.side-news .ico { color: var(--accent-2); display: grid; place-items: center; }
+.side-news b { display: block; font-size: 14px; font-weight: 600; }
+.side-news small { font-size: 12.5px; color: var(--muted); }
+.side-news:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.side-account {
+  display: flex; align-items: center; gap: 10px; padding: 10px 8px; margin: 0 -6px;
+  border-top: 1px solid var(--line); color: var(--text); border-radius: 0;
+}
+.side-account:hover .who b, .side-account.active .who b { color: var(--accent-2); }
+.side-account .avatar { width: 32px; height: 32px; border-radius: 16px; flex: none; display: grid; place-items: center; background: var(--card-2); font-weight: 700; font-size: 14px; }
+.side-account .who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.side-account .who b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-account .who small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-account > .i { color: var(--muted); }
+
+/* Schmale Seiten (Einstellungen, Aufgaben, Dateien): eine Spalte, mittig */
+.page.page-narrow { max-width: 760px; }
+
+/* Reiter mit Unterstrich (Einstellungen) */
+.tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--line); margin: -6px 0 20px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { padding: 10px 0 12px; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 15px; font-weight: 600; color: var(--muted); white-space: nowrap; transition: color .15s, border-color .15s; }
+.tabs button:hover { color: var(--text); }
+.tabs button.on { color: var(--text); border-bottom-color: var(--text); }
 
 /* Tab bar (mobil): kurze Pille mit 4 Seiten + ☰, mittig, rechts daneben der runde +-Knopf */
 .dock {
@@ -200,7 +236,7 @@ a { color: inherit; text-decoration: none; }
 .eyebrow { font-size: 15px; font-weight: 500; color: var(--muted); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .page-title { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -.025em; line-height: 1.05; margin: 0; }
 .page-title .accent { color: var(--accent-2); }
-@media (min-width: 960px) { .page-title { font-size: 42px; } }
+
 .head-actions { display: flex; gap: 8px; align-items: center; }
 .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-weight: 700; font-size: 14px; margin-bottom: 10px; }
 .back-link:hover { color: var(--text); }
@@ -480,10 +516,10 @@ button.wl-cell:hover { filter: brightness(1.08); }
 
 /* ---------- Forms ---------- */
 .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
-.field > label, .field-label { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.field > label, .field-label { font-size: 14px; font-weight: 600; color: var(--text); }
 .input, .select, textarea.input {
-  width: 100%; height: 46px; padding: 0 14px; border-radius: 13px;
-  background: var(--card-2); border: 1px solid var(--line); outline: none;
+  width: 100%; height: 46px; padding: 0 14px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--line-strong); outline: none;
   transition: border-color .15s, box-shadow .15s; font-size: 15px;
 }
 textarea.input { height: auto; min-height: 80px; padding: 12px 14px; resize: vertical; }

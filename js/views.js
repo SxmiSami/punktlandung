@@ -491,10 +491,14 @@
   PL.views.settings = function () {
     const s = st().settings;
     const seg = (key, opts) => `<div class="seg">${opts.map(([v, l]) => `<button class="${String(s[key]) === String(v) ? 'on' : ''}" data-action="setting" data-key="${key}" data-v="${v}">${l}</button>`).join('')}</div>`;
-    return `<div class="page view">
+    // Reiter wie in Einstellungen bekannter Apps: immer nur ein Bereich
+    const tab = PL.ui.setTab || 'allgemein';
+    const tabBtn = (v, l) => `<button class="${tab === v ? 'on' : ''}" data-action="settings-tab" data-v="${v}" ${tab === v ? 'aria-current="page"' : ''}>${l}</button>`;
+    return `<div class="page view page-narrow">
       ${pageHead(`Punktlandung · Version ${PL.VERSION}`, 'Einstellungen')}
-      <div class="grid" style="max-width:760px">
-        <section class="card">
+      <nav class="tabs" aria-label="Bereiche">${tabBtn('allgemein', 'Allgemein')}${tabBtn('stundenplan', 'Stundenplan')}${tabBtn('konto', 'Konto & Dateien')}${tabBtn('daten', 'Daten')}</nav>
+      <div class="grid">
+        ${tab === 'allgemein' ? `<section class="card">
           <div class="card-head"><h2 class="card-title">Profil & Darstellung</h2></div>
           <div class="field"><label for="setName">Dein Name</label><input id="setName" class="input" data-setting="name" value="${esc(s.name)}" placeholder="Optional" maxlength="30"></div>
           <div class="opt-row"><div><div class="t">Design</div><div class="d">Hell, dunkel oder wie dein Gerät</div></div>${seg('theme', [['auto', 'Auto'], ['dark', 'Dunkel'], ['light', 'Hell']])}</div>
@@ -510,7 +514,8 @@
             <label class="switch"><input type="checkbox" data-setting="prognosis" ${s.prognosis ? 'checked' : ''}><span></span></label></div>
         </section>
 
-        <section class="card">
+        ` : ''}
+        ${tab === 'stundenplan' ? `<section class="card">
           <div class="card-head"><div><h2 class="card-title">${ic('clock')} Stundenplan</h2><div class="card-sub">${st().lessons.length} Stunden eingetragen</div></div><a class="link-btn" href="#/plan">Öffnen ${ic('chevron-right', 'i-sm')}</a></div>
           <div class="opt-row"><div><div class="t">A/B-Wochen</div><div class="d">Für Stunden, die nur jede zweite Woche stattfinden</div></div>
             <label class="switch"><input type="checkbox" data-setting="abWeeks" ${s.abWeeks ? 'checked' : ''}><span></span></label></div>
@@ -518,15 +523,15 @@
             <div class="seg"><button class="${PL.weekType(new Date()) === 'A' ? 'on' : ''}" data-action="set-ab" data-v="A">A-Woche</button><button class="${PL.weekType(new Date()) === 'B' ? 'on' : ''}" data-action="set-ab" data-v="B">B-Woche</button></div></div>` : ''}
           <div class="opt-row"><div><div class="t">Stundenzeiten</div><div class="d">${s.periods.length} Stunden · ${esc(s.periods[0].start)} bis ${esc(s.periods[s.periods.length - 1].end)}</div></div><button class="btn btn-sm" data-action="edit-periods">${ic('edit', 'i-sm')} Bearbeiten</button></div>
           ${PL.untis ? PL.untis.settingsRow() : ''}
-        </section>
+        </section>` : ''}
 
-        ${accountCard()}
+        ${tab === 'konto' ? `${accountCard()}
 
         ${PL.admin ? PL.admin.card() : ''}
 
-        ${PL.notesStorageRow()}
+        ${PL.notesStorageRow()}` : ''}
 
-        <section class="card">
+        ${tab === 'daten' ? `<section class="card">
           <div class="card-head"><div><h2 class="card-title">Daten</h2><div class="card-sub">${PL.sync.user ? 'Gespeichert auf diesem Gerät und in deinem Konto' : 'Ohne Konto nur auf diesem Gerät gespeichert'}</div></div></div>
           <div class="opt-row"><div><div class="t">Backup exportieren</div><div class="d">Als Datei sichern oder aufs Handy übertragen</div></div><button class="btn btn-sm" data-action="export">${ic('download', 'i-sm')} Export</button></div>
           <div class="opt-row"><div><div class="t">Backup importieren</div><div class="d">Ersetzt die aktuellen Daten</div></div><button class="btn btn-sm" data-action="import">${ic('upload', 'i-sm')} Import</button></div>
@@ -540,7 +545,7 @@
           <p style="margin:0;color:var(--text-2);font-size:14px"><b>iPhone/iPad:</b> In Safari auf „Teilen“ → „Zum Home-Bildschirm“.<br><b>Android:</b> Im Chrome-Menü „App installieren“.<br><b>PC:</b> In Chrome/Edge auf das Installieren-Symbol in der Adressleiste.</p>
         </section>
         <div class="about"><span class="brand-mark" aria-hidden="true"></span><div><b>Punktlandung</b><span>Version ${PL.VERSION}</span></div>
-          ${PL.whatsNewSheet ? `<button class="btn btn-sm" data-action="whats-new">${ic('sparkle', 'i-sm')} Was ist neu</button>` : ''}</div>
+          ${PL.whatsNewSheet ? `<button class="btn btn-sm" data-action="whats-new">${ic('sparkle', 'i-sm')} Was ist neu</button>` : ''}</div>` : ''}
       </div>
     </div>`;
   };

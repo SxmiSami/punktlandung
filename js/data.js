@@ -2,7 +2,7 @@
 window.PL = window.PL || {};
 
 /* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
-PL.VERSION = '0.15.1';
+PL.VERSION = '0.15.2';
 
 /* „Was ist neu“ – erscheint nach einem Update einmal pro Konto (neueste Version zuerst).
    Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional */

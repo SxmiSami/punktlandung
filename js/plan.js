@@ -422,7 +422,7 @@
     const label = (k) => (k === 'overdue' ? 'Überfällig' : k === 'none' ? 'Ohne Datum' : dayLabel(k));
     const segBtn = (v, l) => `<button class="${f === v ? 'on' : ''}" data-action="task-filter" data-v="${v}">${l}</button>`;
     const openCount = st().tasks.filter((t) => !t.done).length;
-    return `<div class="page view">
+    return `<div class="page view page-narrow">
       <header class="page-head"><div><div class="eyebrow">${openCount} offen</div><h1 class="page-title">Aufgaben</h1></div>
 </header>
       <div class="seg" style="margin-bottom:18px">${segBtn('open', 'Offen')}${segBtn('done', 'Erledigt')}${segBtn('all', 'Alle')}</div>

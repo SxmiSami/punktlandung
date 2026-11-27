@@ -168,7 +168,7 @@
     }
     const chips = tab === 'shared' ? chip('all', 'Alle') + chip('exam', 'Zu Klausuren')
       : chip('all', 'Alle') + chip('exam', 'Zu Klausuren') + (PL.sync.user ? chip('public', 'Geteilt') : '');
-    return `<div class="page view">
+    return `<div class="page view page-narrow">
       <header class="page-head"><div><div class="eyebrow">${notes.length} Datei${notes.length === 1 ? '' : 'en'}${shared.length ? ` · ${shared.length} von anderen` : ''}</div><h1 class="page-title">Dateien</h1></div>
         <div class="head-actions">${PL.storagePill()}<button class="btn btn-primary hide-mobile" data-action="add-note">${ic('upload', 'i-sm')} Hochladen</button></div></header>
       ${orphanCards()}
