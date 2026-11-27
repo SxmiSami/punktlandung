@@ -379,8 +379,9 @@
         ${PL.ui.planWeek !== 0 ? `<button class="btn btn-sm" data-action="plan-week" data-v="0">Heute</button>` : ''}
         ${st().lessons.length ? `<button class="btn btn-sm ${edit ? 'btn-primary' : ''} plan-edit-btn" data-action="plan-edit" title="${edit ? 'Fertig' : 'Stundenplan bearbeiten'}" aria-label="${edit ? 'Fertig' : 'Stundenplan bearbeiten'}">${edit ? `${ic('check', 'i-sm')} Fertig` : `${ic('edit', 'i-sm')}<span class="hide-phone">Bearbeiten</span>`}</button>` : ''}
       </div>
-      ${edit && st().lessons.length ? `<div class="edit-banner">${ic('edit', 'i-sm')} Bearbeiten – Änderungen gelten jede Woche</div>` : ''}
-      <section class="card tt-card ${edit ? 'is-edit' : ''} ${slide ? 'slide-' + slide : ''}" data-swipe-week>
+      ${edit && st().lessons.length ? `<div class="edit-banner">${ic('edit', 'i-sm')} Bearbeiten – Änderungen gelten jede Woche</div>
+        <div class="tt-design"><span>Design</span><div class="seg"><button class="${s.ttDesign !== 'b' ? 'on' : ''}" data-action="tt-design" data-v="a" title="Fächer in ihrer Farbe">A · Farbig</button><button class="${s.ttDesign === 'b' ? 'on' : ''}" data-action="tt-design" data-v="b" title="Fächer grau mit Farbstreifen – Untis-Änderungen fallen mehr auf">B · Grau</button></div></div>` : ''}
+      <section class="card tt-card ${s.ttDesign === 'b' ? 'tt-b' : ''} ${edit ? 'is-edit' : ''} ${slide ? 'slide-' + slide : ''}" data-swipe-week>
         <div class="tt" style="grid-template-rows:auto${ev ? ' auto' : ''} repeat(${n}, var(--tt-row))">${cells}</div>
       </section>
       ${legend}
@@ -466,6 +467,7 @@
 
   PL.extraActions = Object.assign(PL.extraActions || {}, {
     'lesson-info': (d) => PL.lessonInfoSheet(d.date, d.i),
+    'tt-design': (d) => { st().settings.ttDesign = d.v === 'b' ? 'b' : 'a'; PL.save(); PL.render(); },
     'plan-edit': () => { PL.ui.planEdit = !(PL.ui.planEdit || !st().lessons.length); PL.render(); },
     'task-onenote': (d) => { const t = st().tasks.find((x) => x.id === d.id); if (t) PL.openOneNote(t.onenote); },
   });

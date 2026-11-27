@@ -2,12 +2,15 @@
 window.PL = window.PL || {};
 
 /* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
-PL.VERSION = '0.16.3';
+PL.VERSION = '0.16.4';
 
 /* „Was ist neu“ – erscheint nach einem Update einmal pro Konto (neueste Version zuerst).
    Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional
    silent: true = nach dem Update kein Fenster, der Eintrag steht nur unter „Was ist neu“ */
 PL.CHANGELOG = [
+  { v: '0.16.4', silent: true, items: [
+    { icon: 'calendar', title: 'Stundenplan in Grau', text: 'Beim Bearbeiten des Stundenplans kannst du Design B wählen: Stunden sind grau mit Farbstreifen, so fallen Ausfälle und Änderungen aus Untis sofort auf.' },
+  ] },
   { v: '0.16.0', silent: true, items: [
     { icon: 'sparkle', title: 'Komplett neues Design', text: 'Ruhigere Flächen, große Zahlen und eine neue Übersicht mit Kennzahlen, deinem Abi-Fortschritt und „Als Nächstes“ für die kommenden 7 Tage.' },
     { icon: 'target', title: 'Dein Wunschschnitt', text: 'Stell im Ziel-Rechner (Abitur) deinen Wunschschnitt ein – er erscheint als gestrichelte Linie auf der Übersicht.' },

@@ -3,6 +3,9 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen – und in `js/data.js` bei `PL.CHANGELOG` einen kurzen Eintrag für „Was ist neu“ ergänzen.
 
+## 0.16.4
+- **Stundenplan-Design wählbar**: Beim Bearbeiten des Stundenplans zwischen A (Fächer in ihrer Farbe, wie bisher) und B (Fächer grau, Fachfarbe nur als Streifen links) wählen. In B fallen Ausfälle, Klausuren und Vertretungen aus Untis deutlich mehr auf
+
 ## 0.16.0
 - **Komplett neues Design** nach Vorbildern aus Shopify, Steep, Cal.com, Craft, NotebookLM, Miro, WorkOS, Motion und Wise:
   - Farben: ruhige, leicht warme Grautöne, Karten als zarte Flächen statt mit Rand, Orange (Farbe des Landepunkts im App-Icon) nur noch als Akzent. Dunkel: fast Schwarz mit abgestuften Flächen

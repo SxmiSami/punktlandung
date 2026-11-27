@@ -1284,6 +1284,13 @@ details.faq code, code { font-family: var(--mono); background: var(--card-2); pa
 .tt-card.is-edit { box-shadow: 0 0 0 2px var(--accent-soft); }
 .edit-banner { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent-2); background: var(--accent-soft); padding: 9px 12px; border-radius: 11px; margin-bottom: 10px; }
 .plan-edit-btn { margin-left: auto; }
+.tt-design { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.tt-design .seg { flex: 0 0 auto; }
+/* Design B: normale Stunden grau, Fachfarbe nur als Streifen links – Untis-Änderungen stechen heraus */
+.tt-b .tt-block.st-ok, .tt-b .tt-block.editing { background: color-mix(in srgb, var(--text) 6%, var(--page)); box-shadow: inset 4px 0 0 var(--c); }
+.tt-b .tt-block.st-ok b, .tt-b .tt-block.editing b { color: var(--text); }
+.tt-b .tt-block.st-ok:hover, .tt-b .tt-block.editing:hover { box-shadow: inset 4px 0 0 var(--c), var(--shadow-sm); }
+.tt-b .tt-block.st-ok.live { box-shadow: inset 4px 0 0 var(--c), 0 0 0 2px var(--c); }
 /* Jetzt-Linie in der heutigen Spalte */
 .tt-now { position: relative; z-index: 3; pointer-events: none; }
 .tt-now i { position: absolute; left: -3px; right: 0; height: 2px; background: var(--accent); border-radius: 2px; transform: translateY(-1px); }

@@ -22,6 +22,7 @@
     periods: PL.DEFAULT_PERIODS.map((p) => Object.assign({}, p)),
     abWeeks: false,         // A/B-Wochen im Stundenplan
     abRef: null,            // Montag (ISO) einer A-Woche
+    ttDesign: 'a',          // Stundenplan: a = Fachfarben, b = grau mit Farbstreifen (Untis-Änderungen fallen auf)
     noteMode: 'both',       // Lernzettel: both | cloud | local
     compressPhotos: true,   // Fotos beim Hochladen verkleinern
     untisMap: {},           // Untis-Fach (Kürzel) → Fach-ID oder 'skip'
