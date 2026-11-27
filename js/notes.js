@@ -134,6 +134,46 @@
   const groupHead = (name, color, n) => `<div class="sec-title">${name ? `<span style="display:flex;align-items:center;gap:8px"><span class="dot-c" style="--c:${color || 'var(--muted)'}"></span>${esc(name)}</span>` : 'Ohne Fach'}<span>${n}</span></div>`;
   const groupCard = (rows) => `<section class="card" style="padding:8px 10px;margin-bottom:16px"><div class="list">${rows}</div></section>`;
 
+  /* Rechte Spalte am Computer: Übersicht, Speicher, Hochladen */
+  function filesSide(notes, shared) {
+    const s = storageState();
+    const total = notes.reduce((n, x) => n + (x.size || 0), 0);
+    const exam = notes.filter((n) => !!F.exam(n)).length;
+    const pub = notes.filter((n) => F.isPublic(n) || F.sharesOf(n).length).length;
+    const row = (icon, l, v) => `<div class="fs-row">${ic(icon, 'i-sm')}<span>${l}</span><b class="num">${v}</b></div>`;
+    const store = s.kind === 'cloud'
+      ? `<div class="fs-store"><div class="fs-row"><span>Cloud</span><b class="num">${PL.fmtBytes(F.usedMine())} <small>/ ${F.cfg.quotaMB} MB</small></b></div><div class="meter-bar ${lvlOf(s.pct)}"><i style="width:${Math.max(2, s.pct)}%"></i></div></div>`
+      : s.kind === 'setup' ? `<div class="note-warn" style="margin:0">${ic('alert', 'i-sm')}<div>Online-Speicher noch nicht eingerichtet.</div></div>`
+      : `<p class="hint" style="margin:0">Ohne Konto liegen Dateien nur auf diesem Gerät.</p>`;
+    return `<aside class="files-side">
+      <h2 class="card-title">Übersicht</h2>
+      <section class="card fs-card">
+        ${row('file', 'Meine Dateien', notes.length)}
+        ${row('download', 'Zusammen', PL.fmtBytes(total))}
+        ${row('calendar', 'Zu Klausuren', exam)}
+        ${PL.sync.user ? row('users', 'Geteilt', pub) + row('globe', 'Von anderen', shared.length) : ''}
+      </section>
+      <section class="card fs-card">
+        ${store}
+        <button class="btn btn-primary btn-block" data-action="add-note">${ic('upload', 'i-sm')} Hochladen</button>
+        <button class="link-btn fs-link" data-action="storage-info">Speicher im Detail ${ic('chevron-right', 'i-sm')}</button>
+      </section>
+    </aside>`;
+  }
+
+  /* Dateien auf die Ablagefläche ziehen öffnet gleich das Hochladen-Fenster */
+  if (!PL._pageDrop) {
+    PL._pageDrop = true;
+    const zone = (e) => e.target.closest && e.target.closest('[data-page-drop]');
+    document.addEventListener('dragover', (e) => { const z = zone(e); if (z) { e.preventDefault(); z.classList.add('over'); } });
+    document.addEventListener('dragleave', (e) => { const z = zone(e); if (z && !z.contains(e.relatedTarget)) z.classList.remove('over'); });
+    document.addEventListener('drop', (e) => {
+      const z = zone(e); if (!z) return;
+      e.preventDefault(); z.classList.remove('over');
+      if (e.dataTransfer && e.dataTransfer.files.length) PL.addNotesSheet({ files: Array.from(e.dataTransfer.files) });
+    });
+  }
+
   PL.views.notes = function () {
     const tab = PL.ui.notesTab === 'shared' ? 'shared' : 'mine';
     const filter = PL.ui.notesFilter || 'all';
@@ -168,14 +208,27 @@
     }
     const chips = tab === 'shared' ? chip('all', 'Alle') + chip('exam', 'Zu Klausuren')
       : chip('all', 'Alle') + chip('exam', 'Zu Klausuren') + (PL.sync.user ? chip('public', 'Geteilt') : '');
-    return `<div class="page view page-narrow">
-      <header class="page-head"><div><div class="eyebrow">${notes.length} Datei${notes.length === 1 ? '' : 'en'}${shared.length ? ` · ${shared.length} von anderen` : ''}</div><h1 class="page-title">Dateien</h1></div>
-        <div class="head-actions">${PL.storagePill()}<button class="btn btn-primary hide-mobile" data-action="add-note">${ic('upload', 'i-sm')} Hochladen</button></div></header>
-      ${orphanCards()}
-      ${F.publicError === 'setup' && PL.sync.user && F.remoteError !== 'setup' ? `<div class="note-warn">${ic('info', 'i-sm')}<div>Zum <b>Teilen für alle</b> einmal <code>supabase/lernzettel.sql</code> in Supabase neu ausführen.</div></div>` : ''}
-      ${PL.sync.user ? `<div class="seg" style="margin-bottom:12px">${segBtn('mine', 'Meine', notes.length)}${segBtn('shared', 'Von anderen', shared.length)}</div>` : ''}
-      <div class="chips" style="margin-bottom:16px">${chips}</div>
-      <div style="max-width:760px">${body}</div>
+    return `<div class="page view">
+      <header class="page-head"><div><div class="eyebrow">${notes.length} Datei${notes.length === 1 ? '' : 'en'}${shared.length ? ` · ${shared.length} von anderen` : ''}</div><h1 class="page-title">Dateien</h1>
+        <p class="page-sub hide-mobile">Fotos, PDFs und andere Dateien – nach Fach sortiert, auf Wunsch online und mit anderen geteilt.</p></div>
+        <div class="head-actions"><span class="files-pill">${PL.storagePill()}</span><button class="btn btn-primary hide-mobile files-head-btn" data-action="add-note">${ic('upload', 'i-sm')} Hochladen</button></div></header>
+      <div class="files-layout">
+        <div class="files-main">
+          ${orphanCards()}
+          ${F.publicError === 'setup' && PL.sync.user && F.remoteError !== 'setup' ? `<div class="note-warn">${ic('info', 'i-sm')}<div>Zum <b>Teilen für alle</b> einmal <code>supabase/lernzettel.sql</code> in Supabase neu ausführen.</div></div>` : ''}
+          <button type="button" class="file-drop hide-mobile" data-action="add-note" data-page-drop>
+            <span class="fd-ico">${ic('upload')}</span>
+            <b>Dateien hierher ziehen oder klicken</b>
+            <span>Fotos, PDFs, Word, PowerPoint … bis ${F.cfg.maxFileMB} MB pro Datei</span>
+          </button>
+          <div class="files-bar">
+            ${PL.sync.user ? `<div class="seg">${segBtn('mine', 'Meine', notes.length)}${segBtn('shared', 'Von anderen', shared.length)}</div>` : ''}
+            <div class="chips">${chips}</div>
+          </div>
+          ${body}
+        </div>
+        ${filesSide(notes, shared)}
+      </div>
     </div>`;
   };
 
@@ -290,6 +343,7 @@
         drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
         drop.addEventListener('dragleave', () => drop.classList.remove('over'));
         drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+        if (opts.files && opts.files.length) addFiles(opts.files);
         picked.addEventListener('click', (e) => { const b = e.target.closest('[data-rm]'); if (!b) return; f.files.splice(Number(b.dataset.rm), 1); draw(); });
         sh.querySelector('[data-subjects]').addEventListener('click', (e) => {
           const b = e.target.closest('[data-id]'); if (!b) return;

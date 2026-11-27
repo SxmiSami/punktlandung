@@ -127,6 +127,29 @@
         : `<button type="button" class="btn btn-sm" data-action="chat-event-add" data-chat="${m.chat_id}" data-id="${m.id}">${ic('calendar', 'i-sm')} In meinen Kalender</button>`}</div>`}${t}</div>`;
   }
 
+  /* Rechte Spalte (breite Bildschirme): Kontakt bzw. Mitglieder, geteilte Dateien und Termine */
+  function detailsHtml(chat) {
+    if (!chat || chat.stub) return '';
+    const members = C.members[chat.id] || [];
+    const list = C.msgs[chat.id] || [];
+    const notes = list.filter((m) => m.kind === 'note').slice(-6).reverse();
+    const events = list.filter((m) => m.kind === 'event').slice(-4).reverse();
+    const other = C.otherOf(chat);
+    const sec = (title, body) => `<section class="cd-sec"><h3>${title}</h3>${body}</section>`;
+    const people = chat.isGroup
+      ? sec(`Mitglieder <span>${members.length}</span>`, members.map((m) => `<div class="cd-row"><span class="cd-dot" style="--c:${C.memberColor(m.user_id)}">${esc((m.user_id === me() ? 'Du' : C.nameOf(chat.id, m.user_id)).charAt(0).toUpperCase())}</span><span>${esc(m.user_id === me() ? 'Du' : C.nameOf(chat.id, m.user_id))}</span></div>`).join(''))
+      : sec('Kontakt', `<div class="cd-kv"><span>E-Mail</span><b>${esc((other || {}).email || '–')}</b></div>`);
+    const fileRows = notes.length ? notes.map((m) => { const p = m.payload || {}; return `<button type="button" class="cd-row cd-click" data-action="chat-note-open" data-chat="${m.chat_id}" data-id="${m.id}">${ic('file', 'i-sm')}<span>${esc(p.title || 'Lernzettel')}</span><small>${esc(p.subject_short || '')}</small></button>`; }).join('')
+      : `<p class="cd-empty">Noch keine Dateien in diesem Chat</p>`;
+    const evRows = events.length ? events.map((m) => { const p = m.payload || {}; return `<div class="cd-row">${ic('calendar', 'i-sm')}<span>${esc(p.title || p.type || 'Termin')}${p.subject_short ? ' · ' + esc(p.subject_short) : ''}</span><small>${p.date ? esc(PL.fmtDate(p.date)) : ''}</small></div>`; }).join('')
+      : `<p class="cd-empty">Noch keine Termine in diesem Chat</p>`;
+    return `<div class="cd-top">${C.avatar(chat)}<div><b>${esc(C.title(chat))}</b><span>${chat.isGroup ? `Gruppe · ${members.length} Personen` : 'Einzelchat'}</span></div></div>
+      ${people}
+      ${sec('Geteilte Dateien', fileRows)}
+      ${sec('Termine', evRows)}
+      <button type="button" class="btn btn-sm cd-more" data-action="chat-info" data-id="${chat.id}">${ic('info', 'i-sm')} Chat-Infos</button>`;
+  }
+
   function convHtml(chat) {
     return `<header class="chat-head" data-chat-head>${headInner(chat)}</header>
       <div class="chat-scroll" data-chat-scroll><div class="msgs" data-chat-msgs>${msgsHtml(chat)}</div></div>
@@ -171,6 +194,7 @@
         </div>
         <section class="chat-pane">${chat ? convHtml(chat)
           : `<div class="chat-none">${ic('chat', 'i-lg')}<b>Wähle einen Chat</b><span>oder starte einen neuen mit Freunden</span><button class="btn btn-sm" data-action="new-chat">${ic('plus', 'i-sm')} Neuer Chat</button></div>`}</section>
+        ${chat ? `<aside class="chat-details" data-chat-details aria-label="Details">${detailsHtml(chat)}</aside>` : ''}
       </div>
     </div>`;
   };
@@ -246,6 +270,7 @@
     if (eb) eb.textContent = eyebrow();
     if (chat) {
       set(root.querySelector('[data-chat-head]'), headInner(chat));
+      set(root.querySelector('[data-chat-details]'), detailsHtml(chat));
       const sc = root.querySelector('[data-chat-scroll]');
       const fromBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
       if (set(root.querySelector('[data-chat-msgs]'), msgsHtml(chat))) {
