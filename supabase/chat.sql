@@ -225,6 +225,29 @@ as $$
   where m.user_id = auth.uid();
 $$;
 
+-- Alle Leute mit Konto (für „Neuer Chat“): E-Mail und Name aus den Einstellungen
+create or replace function public.pl_chat_people()
+returns table (email text, name text)
+language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if auth.uid() is null then raise exception 'pl_not_signed_in'; end if;
+  return query
+    select u.email::text,
+      left(trim(coalesce(
+        nullif(trim(d.data->'settings'->>'name'), ''),
+        (select m.name from public.chat_members m where m.user_id = u.id and m.name <> '' limit 1),
+        ''
+      )), 40)
+    from auth.users u
+    left join public.user_data d on d.user_id = u.id
+    where u.id <> auth.uid() and coalesce(u.email, '') <> '';
+end;
+$$;
+
+revoke all on function public.pl_chat_people() from public, anon;
+grant execute on function public.pl_chat_people() to authenticated;
+
 revoke all on function public.pl_chat_member(uuid) from public, anon;
 revoke all on function public.pl_chat_direct(text, text) from public, anon;
 revoke all on function public.pl_chat_group(text, text[], text) from public, anon;

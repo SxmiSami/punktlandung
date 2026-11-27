@@ -306,7 +306,10 @@
   PL.newChatSheet = function (opts = {}) {
     if (!S().user) { PL.authSheet('login'); return; }
     const f = { mode: opts.mode || 'direct', emails: [] };
-    const friends = C.friends();
+    // Alle mit Konto (Name, sonst E-Mail); bis die Liste da ist bzw. ohne neue chat.sql: Bekannte
+    const known = () => C.friends().map((email) => ({ email, name: '' }));
+    let people = C.people || known(), all = !!C.people;
+    const labelOf = (email) => { const p = people.find((x) => x.email.toLowerCase() === email.toLowerCase()); return p ? C.personLabel(p) : email; };
     const html = `
       ${PL.sheetHead('Neuer Chat', 'Mit Freunden, die ein Konto in Punktlandung haben')}
       <div class="seg seg-block" data-seg style="margin-bottom:16px">
@@ -314,13 +317,13 @@
       </div>
       <form data-form novalidate>
         <div class="field" data-group-only><label for="ncName">Name der Gruppe</label><input id="ncName" class="input" maxlength="60" placeholder="z. B. Mathe-LK"></div>
-        <div class="field"><label for="ncEmail" data-email-label>E-Mail deines Freundes</label>
-          <div style="display:flex;gap:8px"><input id="ncEmail" class="input" type="email" inputmode="email" autocomplete="off" placeholder="name@beispiel.de" style="flex:1" autofocus>
+        <div class="field"><label for="ncEmail" data-email-label>Name oder E-Mail</label>
+          <div style="display:flex;gap:8px"><input id="ncEmail" class="input" type="text" autocomplete="off" placeholder="Suchen oder name@beispiel.de" style="flex:1" autofocus>
           <button type="button" class="btn" data-add data-group-only>${ic('plus', 'i-sm')}</button></div></div>
         <div class="${chipsWrap};margin:-6px 0 12px" data-picked data-group-only></div>
-        ${friends.length ? `<div class="field-label" style="margin:-4px 0 8px">Bekannte</div><div class="${chipsWrap};margin-bottom:14px" data-friends></div>` : ''}
+        <div data-people-wrap hidden><div class="field-label" style="margin:-4px 0 8px" data-people-label>Alle mit Konto</div><div class="${chipsWrap};margin-bottom:14px;max-height:220px;overflow-y:auto" data-friends></div></div>
         <div class="auth-msg" data-msg hidden></div>
-        <p class="hint" style="margin:0 0 14px">Deine Freunde brauchen ein Konto in Punktlandung (unter Einstellungen → Konto). In Gruppen sehen alle, wer dabei ist.</p>
+        <p class="hint" style="margin:0 0 14px">Hier stehen alle mit einem Konto in Punktlandung – mit dem Namen aus ihren Einstellungen, sonst mit der E-Mail. In Gruppen sehen alle, wer dabei ist.</p>
         <div class="sheet-foot"><button type="submit" class="btn btn-primary" data-go>Chat starten</button></div>
       </form>`;
     PL.openSheet(html, {
@@ -333,14 +336,33 @@
           const g = f.mode === 'group';
           sh.querySelectorAll('[data-seg] button').forEach((b) => b.classList.toggle('on', b.dataset.v === f.mode));
           sh.querySelectorAll('[data-group-only]').forEach((el) => { el.hidden = !g; });
-          sh.querySelector('[data-email-label]').textContent = g ? 'Mitglieder (E-Mail-Adressen)' : 'E-Mail deines Freundes';
+          sh.querySelector('[data-email-label]').textContent = g ? 'Mitglieder (Name oder E-Mail)' : 'Name oder E-Mail';
           go.textContent = g ? 'Gruppe erstellen' : 'Chat starten';
-          sh.querySelector('[data-picked]').innerHTML = f.emails.map((e) => `<button type="button" class="chip on" data-rm="${esc(e)}">${esc(e)} ${ic('x', 'i-sm')}</button>`).join('');
-          const fr = sh.querySelector('[data-friends]');
-          if (fr) fr.innerHTML = friends.filter((e) => !f.emails.includes(e)).map((e) => `<button type="button" class="chip" data-friend="${esc(e)}">${g ? ic('plus', 'i-sm') : ic('chat', 'i-sm')} ${esc(e)}</button>`).join('');
+          sh.querySelector('[data-picked]').innerHTML = f.emails.map((e) => `<button type="button" class="chip on" data-rm="${esc(e)}" title="${esc(e)}">${esc(labelOf(e))} ${ic('x', 'i-sm')}</button>`).join('');
+          drawPeople();
+        };
+        const drawPeople = () => {
+          const g = f.mode === 'group';
+          const q = input.value.trim().toLowerCase();
+          const picked = new Set(f.emails.map((e) => e.toLowerCase()));
+          const list = people.filter((p) => !picked.has(p.email.toLowerCase()) && (!q || p.email.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)));
+          sh.querySelector('[data-people-wrap]').hidden = !people.length;
+          sh.querySelector('[data-people-label]').textContent = all ? 'Alle mit Konto' : 'Bekannte';
+          sh.querySelector('[data-friends]').innerHTML = list.length
+            ? list.map((p) => `<button type="button" class="chip" data-friend="${esc(p.email)}" title="${esc(p.email)}">${g ? ic('plus', 'i-sm') : ic('chat', 'i-sm')} ${esc(C.personLabel(p))}</button>`).join('')
+            : '<span class="hint" style="margin:0">Niemand gefunden</span>';
+        };
+        // Name statt E-Mail eingetippt und genau eine Person passt → deren E-Mail
+        const resolve = (t) => {
+          t = t.trim();
+          if (!t || t.includes('@')) return t;
+          const q = t.toLowerCase();
+          const hits = people.filter((p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
+          const exact = hits.filter((p) => p.name.toLowerCase() === q);
+          return (exact.length === 1 ? exact[0] : hits.length === 1 ? hits[0] : { email: t }).email;
         };
         const addEmail = () => {
-          const e = input.value.trim();
+          const e = resolve(input.value);
           if (!e) return true;
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { show('Bitte gib eine gültige E-Mail-Adresse ein.'); return false; }
           if (e.toLowerCase() === ((S().user || {}).email || '').toLowerCase()) { show('Du bist sowieso dabei.'); return false; }
@@ -361,19 +383,19 @@
         });
         sh.querySelector('[data-add]').onclick = () => { addEmail(); input.focus(); };
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && f.mode === 'group') { e.preventDefault(); addEmail(); } });
+        input.addEventListener('input', drawPeople);
         sh.querySelector('[data-picked]').addEventListener('click', (e) => {
           const b = e.target.closest('[data-rm]'); if (!b) return;
           f.emails = f.emails.filter((x) => x !== b.dataset.rm); draw();
         });
-        const fr = sh.querySelector('[data-friends]');
-        if (fr) fr.addEventListener('click', (e) => {
+        sh.querySelector('[data-friends]').addEventListener('click', (e) => {
           const b = e.target.closest('[data-friend]'); if (!b) return;
           if (f.mode === 'direct') { startDirect(b.dataset.friend); return; }
-          f.emails.push(b.dataset.friend); draw();
+          f.emails.push(b.dataset.friend); input.value = ''; draw();
         });
         sh.querySelector('[data-form]').onsubmit = async (e) => {
           e.preventDefault();
-          if (f.mode === 'direct') { startDirect(input.value); return; }
+          if (f.mode === 'direct') { startDirect(resolve(input.value)); return; }
           if (!addEmail()) return;
           const name = sh.querySelector('#ncName').value.trim();
           if (!name) { show('Gib der Gruppe einen Namen.'); sh.querySelector('#ncName').focus(); return; }
@@ -382,6 +404,7 @@
           try { done(await C.startGroup(name, f.emails)); } catch (err) { show(C.err(err)); busy(false); }
         };
         draw();
+        C.loadPeople().then((list) => { if (!sh.isConnected) return; people = list; all = true; draw(); }, () => {});
       },
     });
   };

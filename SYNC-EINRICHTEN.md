@@ -56,7 +56,7 @@ Damit ihr euch in der App schreiben könnt (einzeln oder in Gruppen):
 2. Den kompletten Inhalt der Datei [`supabase/chat.sql`](supabase/chat.sql) einfügen.
 3. Auf **„Run“** klicken. Es sollte „Success. No rows returned“ erscheinen.
 
-Das legt die Tabellen für Chats und Nachrichten an. Nachrichten sieht nur, wer im Chat ist. Lernzettel, die in einen Chat geschickt werden, dürfen alle im Chat öffnen. Neue Nachrichten kommen sofort an (Supabase Realtime); falls Realtime nicht geht, holt die App sie alle 20 Sekunden.
+Das legt die Tabellen für Chats und Nachrichten an. Nachrichten sieht nur, wer im Chat ist. Beim Anlegen eines neuen Chats sieht jede angemeldete Person alle Konten mit Namen (aus den Einstellungen), wer keinen Namen eingetragen hat, mit E-Mail-Adresse. Wer `chat.sql` schon früher ausgeführt hat, führt die Datei einfach noch einmal aus, damit diese Liste erscheint (sonst stehen dort nur Bekannte). Lernzettel, die in einen Chat geschickt werden, dürfen alle im Chat öffnen. Neue Nachrichten kommen sofort an (Supabase Realtime); falls Realtime nicht geht, holt die App sie alle 20 Sekunden.
 
 ### GIFs im Chat (optional)
 

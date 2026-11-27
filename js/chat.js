@@ -373,6 +373,23 @@
     return Array.from(seen.values()).sort();
   };
 
+  /* Alle Leute mit Konto: [{ email, name }] – mit Namen zuerst, dann nach Name/E-Mail.
+     Fehlt pl_chat_people (chat.sql noch nicht neu ausgeführt), bleiben es die Bekannten. */
+  C.people = null;
+  C.loadPeople = async function () {
+    if (!me()) return C.people || [];
+    const { data, error } = await db().rpc('pl_chat_people');
+    if (error) throw error;
+    const mine = ((S().user || {}).email || '').toLowerCase();
+    const label = (p) => (p.name || p.email).toLowerCase();
+    C.people = (data || [])
+      .filter((p) => p.email && p.email.toLowerCase() !== mine)
+      .map((p) => ({ email: p.email, name: (p.name || '').trim() }))
+      .sort((a, b) => (!a.name - !b.name) || label(a).localeCompare(label(b), 'de'));
+    return C.people;
+  };
+  C.personLabel = (p) => p.name || p.email;
+
   /* ---------- Texte ---------- */
   C.systemText = function (m, chatId) {
     const who = C.nameOf(chatId, m.sender, m.sender_name);
