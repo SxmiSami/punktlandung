@@ -134,7 +134,7 @@
         <button type="button" class="icon-btn" data-action="chat-attach" data-id="${chat.id}" aria-label="Lernzettel oder Termin senden" title="Lernzettel oder Termin senden" ${chat.stub ? 'disabled' : ''}>${ic('plus')}</button>
         <button type="button" class="icon-btn gif-btn" data-action="chat-gif" data-id="${chat.id}" aria-label="GIF senden" title="GIF senden" ${chat.stub ? 'disabled' : ''}>GIF</button>
         <textarea class="input" data-chat-input rows="1" maxlength="2000" placeholder="Nachricht" aria-label="Nachricht" enterkeyhint="send"></textarea>
-        <button type="submit" class="icon-btn chat-send" aria-label="Senden" data-send>${ic('send')}</button>
+        <button type="submit" class="icon-btn chat-send" aria-label="Senden" data-send>${ic('send')}<span class="send-l">Senden</span></button>
       </form>`;
   }
 
