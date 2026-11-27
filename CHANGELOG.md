@@ -29,6 +29,7 @@ Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION
 - **Aufgaben** nach Tagen mit Tageskacheln (wie im Craft-Kalender)
 - **Kalender**: Jetzt-Linie in der heutigen Spalte, Stunden als zarte Flächen in Fachfarbe
 - **Einstellungen** als Übersicht mit Suche (wie bei Cal.com), jeder Bereich als eigene Seite; am Computer mit Navigation links. Neu: Übersicht der Tastenkürzel
+- **Ohne Update-Fenster**: Dieses Update öffnet kein „Was ist neu“-Fenster, der Eintrag steht nur unter „Was ist neu“ (`silent: true` in `PL.CHANGELOG`). Updates ohne eigenen Eintrag zeigen ebenfalls kein Fenster mehr (bisher kam dann noch einmal der letzte Eintrag)
 
 ## 0.15.0
 - **Neuer Look** nach Vorbildern aus echten Apps (Apple Card, Pocket Casts, Revolut):

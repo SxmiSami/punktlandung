@@ -5,9 +5,10 @@ window.PL = window.PL || {};
 PL.VERSION = '0.16.0';
 
 /* „Was ist neu“ – erscheint nach einem Update einmal pro Konto (neueste Version zuerst).
-   Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional */
+   Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional
+   silent: true = nach dem Update kein Fenster, der Eintrag steht nur unter „Was ist neu“ */
 PL.CHANGELOG = [
-  { v: '0.16.0', items: [
+  { v: '0.16.0', silent: true, items: [
     { icon: 'sparkle', title: 'Komplett neues Design', text: 'Ruhigere Flächen, große Zahlen und eine neue Übersicht mit Kennzahlen, deinem Abi-Fortschritt und „Als Nächstes“ für die kommenden 7 Tage.' },
     { icon: 'target', title: 'Dein Wunschschnitt', text: 'Stell im Ziel-Rechner (Abitur) deinen Wunschschnitt ein – er erscheint als gestrichelte Linie auf der Übersicht.' },
     { icon: 'plus', title: 'Schneller eintragen', text: 'Der Plus-Knopf fragt, was du eintragen willst: Note, Hausaufgabe, Termin, Datei oder Stunde.' },

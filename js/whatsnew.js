@@ -2,7 +2,10 @@
    - Gemerkt wird die gesehene Version in settings.seenVersion – mit Konto also für alle Geräte.
    - Mit Konto wird erst nach dem ersten Abgleich entschieden, damit ein anderes Gerät,
      auf dem man es schon gesehen hat, zählt.
-   - Neue Nutzer (leerer Stand) sehen nichts: PL.emptyState setzt die aktuelle Version. */
+   - Neue Nutzer (leerer Stand) sehen nichts: PL.emptyState setzt die aktuelle Version.
+   - Das Fenster kommt nur, wenn es seit der zuletzt gesehenen Version einen neuen Eintrag
+     ohne silent gibt. Ist der Eintrag der aktuellen Version silent, kommt bei diesem Update
+     gar kein Fenster. In beiden Fällen wird die Version still als gesehen gemerkt. */
 (function () {
   const esc = PL.esc, ic = PL.icon;
   const S = () => PL.sync || {};
@@ -60,7 +63,11 @@
     PL.save();
     // Gleich hochladen – während das Fenster offen ist, gleicht die App sonst nicht ab
     if (S().user && S().syncNow) S().syncNow();
-    PL.whatsNewSheet(since);
+    // Nur zeigen, wenn es etwas Neues gibt, das angekündigt werden soll (nicht silent)
+    const list = PL.CHANGELOG || [];
+    const cur = list.find((e) => e.v === PL.VERSION);
+    const loud = !(cur && cur.silent) && list.some((e) => !e.silent && cmp(e.v, since) > 0 && cmp(e.v, PL.VERSION) <= 0);
+    if (loud) PL.whatsNewSheet(since);
   }
   function stop() { clearInterval(timer); timer = null; }
 
