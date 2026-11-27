@@ -293,11 +293,12 @@
               if (err) { show(err); return; }
               PL.closeSheet();
               PL.toast('Angemeldet – deine Noten werden synchronisiert');
+              S.afterAuth('login');
             } else {
               const r = await S.signUp(email, pw);
               if (r.error) { show(r.error); return; }
               if (r.needsConfirm) show('Fast geschafft! Wir haben dir eine E-Mail geschickt. Klick auf den Link darin und melde dich danach hier an.', true);
-              else { PL.closeSheet(); PL.toast('Konto erstellt – du bist angemeldet'); }
+              else { PL.closeSheet(); PL.toast('Konto erstellt – du bist angemeldet'); S.afterAuth('signup'); }
             }
           } finally { submit.disabled = false; }
         };

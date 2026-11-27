@@ -63,7 +63,9 @@
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) return;
 
   S.enabled = true;
-  S.client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+  // vor dem Anlegen des Clients merken – Supabase liest den Link danach aus der Adresse
+  let signupLink = /type=signup/.test(location.hash + location.search);
+  S.client =window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
   const table = () => S.client.from('user_data');
@@ -228,13 +230,32 @@
     PL.replaceState(PL.emptyState(), { fromRemote: true });
   };
 
+  /* Nach dem Anmelden/Registrieren: sobald das Fenster zu ist, Daten aus dem Konto holen.
+     Anmelden → direkt zur Übersicht (mit den Fächern aus dem Konto).
+     Registrieren → neues Konto ist leer, also gleich Fächer einrichten. */
+  S.afterAuth = function (kind) {
+    S.loading = kind === 'login' && !hasData(PL.state);
+    if (S.loading) PL.render && PL.render();
+    setTimeout(async () => {
+      try { await S.syncNow(); } catch (e) { /* Status zeigt den Fehler */ }
+      S.loading = false;
+      if (kind === 'signup' && !hasData(PL.state)) { PL.startSetup(); return; }
+      if (/^#\/setup/.test(location.hash)) { PL.ui.setup = null; location.hash = '#/'; }
+      else PL.render && PL.render();
+    }, 240); // Fenster schließt in 200 ms – vorher würde der Abgleich übersprungen
+  };
+
   S.client.auth.onAuthStateChange((event, session) => {
     S.user = session ? session.user : null;
     S.authReady = true;  // Anmeldestatus ist bekannt (für „Was ist neu“)
+    // Rückkehr über den Bestätigungslink aus der Registrierungs-E-Mail (nur einmal)
+    const fromSignupLink = signupLink && !!S.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION');
+    if (fromSignupLink) signupLink = false;
     // Supabase-Aufrufe nicht direkt im Callback ausführen
     setTimeout(() => {
       if (event === 'PASSWORD_RECOVERY') PL.newPasswordSheet();
-      if (S.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) S.syncNow();
+      if (fromSignupLink) S.afterAuth('signup');
+      else if (S.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) S.syncNow();
       if (!S.user) setStatus('off');
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
         if (/access_token|error_description/.test(location.hash)) history.replaceState(null, '', location.pathname + '#/');

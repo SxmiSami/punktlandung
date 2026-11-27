@@ -47,9 +47,10 @@
         </div>
       </div>
       <div class="onb-actions">
+        ${PL.sync.loading ? `<button class="btn btn-primary btn-lg" disabled>Deine Daten werden geladen …</button>` : `
         <button class="btn btn-primary btn-lg" data-action="setup">Fächer einrichten</button>
-        <button class="btn btn-lg" data-action="demo">Mit Beispieldaten ausprobieren</button>
-        <div class="onb-links">
+        <button class="btn btn-lg" data-action="demo">Mit Beispieldaten ausprobieren</button>`}
+        <div class="onb-links" ${PL.sync.loading ? 'style="display:none"' : ''}>
           <button class="onb-link" data-action="import">Datei importieren</button>
           ${PL.sync.enabled && !PL.sync.user ? `<button class="onb-link" data-action="login">Schon ein Konto? Anmelden</button>` : ''}
         </div>
