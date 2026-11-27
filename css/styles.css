@@ -169,7 +169,7 @@ kbd {
   .app { display: grid; grid-template-columns: var(--sb-w) minmax(0, 1fr); height: 100dvh; overflow: hidden; }
   .panel {
     grid-column: 2; position: relative;
-    margin: var(--top-gap) 8px calc(var(--safe-b) + 8px) 0; height: calc(100dvh - 8px - var(--top-gap) - var(--safe-b));
+    margin: var(--top-gap) 8px 8px 0; height: calc(100dvh - 8px - var(--top-gap));
     background: var(--page); border-radius: 14px; box-shadow: var(--shadow-sm);
     overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable;
   }
@@ -186,7 +186,7 @@ kbd {
 @media (min-width: 768px) and (min-height: 501px) {
   .sidebar {
     display: flex; flex-direction: column; gap: 4px; min-width: 0;
-    height: 100dvh; padding: calc(var(--top-gap) + 4px) 10px calc(var(--safe-b) + 10px) 12px; color: var(--text-2);
+    height: 100dvh; padding: calc(var(--top-gap) + 4px) 10px 10px 12px; color: var(--text-2);
     transition: width .2s ease;
   }
   .sb-top { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 0 0 4px; margin-bottom: 4px; }
@@ -251,7 +251,7 @@ kbd {
 
   /* Schmale Icon-Leiste (iPad hochkant oder eingeklappt) */
   html.rail { --sb-w: 68px; }
-  html.rail:not(.sb-open) .sidebar { align-items: center; padding: calc(var(--top-gap) + 4px) 8px calc(var(--safe-b) + 10px); }
+  html.rail:not(.sb-open) .sidebar { align-items: center; padding: calc(var(--top-gap) + 4px) 8px 10px; }
   html.rail:not(.sb-open) .sb-top { padding: 0; justify-content: center; }
   html.rail:not(.sb-open) .brand { flex: none; padding: 4px; }
   html.rail:not(.sb-open) .brand-name,
@@ -1674,7 +1674,7 @@ details.faq code, code { font-family: var(--mono); background: var(--card-2); pa
 .chat-toast > .i { color: var(--accent) !important; }
 @media (min-width: 768px) and (min-height: 501px) {
   .page.chat-page { max-width: none; }
-  .chat-layout { display: grid; grid-template-columns: minmax(270px, 330px) minmax(0, 1fr); gap: 12px; height: calc(100dvh - 8px - var(--top-gap) - var(--safe-b) - var(--topbar-h) - 42px); min-height: 440px; }
+  .chat-layout { display: grid; grid-template-columns: minmax(270px, 330px) minmax(0, 1fr); gap: 12px; height: calc(100dvh - 8px - var(--top-gap) - var(--topbar-h) - 42px); min-height: 440px; }
   .chat-list-pane, .chat-page.has-active .chat-list-pane { display: flex; flex-direction: column; min-height: 0; background: var(--card); border-radius: 16px; padding: 16px 8px 8px; }
   .chat-list-pane .page-head { margin: 0 8px 12px; align-items: center; }
   .chat-list-pane .page-title { font-size: 22px; }
