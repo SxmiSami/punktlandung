@@ -15,62 +15,15 @@
     return { name: name || '', arg };
   }
 
-  function renderNav(r) {
-    const active = r.name === 'fach' ? 'faecher' : r.name === 'termine' ? 'plan' : r.name;
-    const hidden = r.name === 'setup' || !PL.state.subjects.length;
-    const openTasks = PL.state.tasks.filter((t) => !t.done).length;
-    const unread = PL.chat ? PL.chat.unread : 0;
-    const news = PL.feed ? PL.feed.unread() : 0;
-    const nav = PL.NAV.filter((n) => n.id !== 'chat' || (PL.chat && PL.chat.available()));
-    const big = (v) => `<span class="count badge">${v > 99 ? '99+' : v}</span>`;
-    const count = (n) => (n.id === 'aufgaben' && openTasks ? `<span class="count">${openTasks}</span>` : n.id === 'chat' && unread ? big(unread) : n.id === 'neu' && news ? big(news) : '');
-    document.getElementById('sideNav').innerHTML = nav.map((n) =>
-      `<a class="side-link ${active === n.id ? 'active' : ''}" href="#/${n.id}">${ic(n.icon)} ${n.label}${count(n)}</a>`).join('');
-    const ver = document.getElementById('sideVersion');
-    if (ver) ver.textContent = '';
-    const sn = document.getElementById('sideNews');
-    if (sn) { sn.hidden = !PL.whatsNewSheet; sn.innerHTML = `<span class="ico">${ic('sparkle', 'i-sm')}</span><span><b>Was ist neu</b><small>Version ${PL.VERSION}</small></span>`; }
-    document.querySelectorAll('[data-nav="einstellungen"]').forEach((a) => a.classList.toggle('active', active === 'einstellungen'));
-    const ss = document.getElementById('sideSettings');
-    if (ss) {
-      // Konto-Zeile unten: Initiale, Name und Konto bzw. „Nur auf diesem Gerät“, führt zu den Einstellungen
-      const nm = (PL.state.settings.name || '').trim();
-      const mail = PL.sync.user ? (PL.sync.user.email || '') : '';
-      const initial = (nm || mail).charAt(0).toUpperCase();
-      ss.innerHTML = `<span class="avatar">${initial ? PL.esc(initial) : ic('settings', 'i-sm')}</span><span class="who"><b>${PL.esc(nm || 'Einstellungen')}</b><small>${PL.esc(mail || 'Nur auf diesem Gerät')}</small></span>${PL.sync.user ? PL.syncDot().replace('sync-dot', 'sync-dot static') : ''}${initial ? ic('settings', 'i-sm') : ''}`;
-      ss.setAttribute('aria-label', 'Einstellungen');
-    }
-    const tb = document.getElementById('tabbar');
-    tb.style.display = hidden ? 'none' : '';
-    document.body.classList.toggle('no-tabbar', hidden);
-    // Neuigkeiten haben unten keinen eigenen Reiter: ihr Zähler hängt an „Übersicht“
-    const badge = (n) => { const v = n.id === 'aufgaben' ? openTasks : n.id === 'chat' ? unread : n.id === '' ? news : 0; return v ? `<i class="tab-badge">${v > 99 ? '99+' : v}</i>` : ''; };
-    // Unten nur die vier Hauptseiten, alles andere liegt hinter ☰
-    const tabs = nav.filter((n) => !n.noTab).slice(0, 4);
-    const inMenu = !tabs.some((n) => n.id === active);
-    const menuCount = unread;
-    const tab = (n) => `<a class="tab ${active === n.id ? 'active' : ''}" href="#/${n.id}" aria-label="${n.label}" ${active === n.id ? 'aria-current="page"' : ''}>${ic(n.icon)}<span>${n.tab || n.label}</span>${badge(n)}</a>`;
-    tb.innerHTML = tabs.map(tab).join('')
-      + `<button class="tab ${inMenu ? 'active' : ''}" data-action="nav-menu" aria-label="Weitere Seiten">${ic('menu')}<span>Mehr</span>${menuCount ? `<i class="tab-badge">${menuCount > 99 ? '99+' : menuCount}</i>` : ''}</button>`;
-    // Schwebender +-Knopf: passt sich der aktuellen Seite an
-    const fab = document.getElementById('fab');
-    const fabAction = r.name === 'aufgaben' ? ['add-task', 'Aufgabe hinzufügen']
-      : r.name === 'dateien' ? ['add-note', 'Datei hochladen']
-      : r.name === 'chat' ? ['new-chat', 'Neuer Chat']
-      : (r.name === 'plan' && PL.ui.planMode === 'week') ? ['add-lesson', 'Stunde eintragen']
-      : (r.name === 'termine' || r.name === 'plan') ? ['add-event', 'Termin hinzufügen']
-      : ['add-grade', 'Note eintragen'];
-    fab.dataset.action = fabAction[0];
-    fab.setAttribute('aria-label', fabAction[1]);
-    fab.title = fabAction[1];
-    fab.hidden = hidden || r.name === 'einstellungen' || r.name === 'neu' || (r.name === 'chat' && (!!r.arg || !PL.sync.user));
-  }
+  /* Seitenleiste, Kopfzeile und Tab-Leiste: siehe shell.js */
+  const renderNav = (r) => PL.shell.render(r);
 
   function render() {
     const r = route();
     const key = r.name + '/' + (r.arg || '');
     const changed = key !== lastRoute;
-    const y = window.scrollY;
+    const sc = PL.scroller();
+    const y = sc.scrollTop;
     PL.applyTheme();
 
     // Chat: nur Liste und Nachrichten austauschen, damit das Eingabefeld erhalten bleibt
@@ -91,7 +44,7 @@
       case 'dateien': html = PL.views.notes(); break;
       case 'chat': html = PL.views.chat(r.arg); break;
       case 'neu': html = PL.views.feed(); break;
-      case 'einstellungen': html = PL.views.settings(); break;
+      case 'einstellungen': html = PL.views.settings(r.arg); break;
       case 'setup': html = PL.views.setup(); break;
       default: html = PL.views.dashboard();
     }
@@ -106,8 +59,10 @@
     if (html === '') return; // Umleitung läuft
     main.innerHTML = html;
     renderNav(r);
-    if (changed) { window.scrollTo(0, 0); lastRoute = key; }
-    else { main.querySelectorAll('.view').forEach((v) => (v.style.animation = 'none')); window.scrollTo(0, y); }
+    // Nach dem Zeichnen kann sich ändern, was scrollt (Willkommen: ganze Seite, sonst der Inhaltsbereich)
+    const sc2 = PL.scroller();
+    if (changed) { sc2.scrollTop = 0; if (sc2 !== sc) sc.scrollTop = 0; lastRoute = key; PL.shell.routeChanged(); }
+    else { main.querySelectorAll('.view').forEach((v) => (v.style.animation = 'none')); sc2.scrollTop = y; }
     if (r.name === 'chat' && PL.chatMounted) PL.chatMounted(r.arg);
     // Titel bleibt immer „Punktlandung“: Safari nimmt ihn beim „Zum Home-Bildschirm“ als App-Namen
     document.title = 'Punktlandung';
@@ -125,19 +80,6 @@
   /* ---------- Aktionen ---------- */
   const A = {
     'close-sheet': () => PL.closeSheet(),
-    'settings-tab': (d) => { PL.ui.setTab = d.v; render(); },
-    // ☰ in der Tab-Leiste: übrige Seiten und Einstellungen
-    'nav-menu': () => {
-      const r = route();
-      const cur = r.name === 'termine' ? 'plan' : r.name;
-      const nav = PL.NAV.filter((n) => n.id !== 'chat' || (PL.chat && PL.chat.available()));
-      const main = nav.filter((n) => !n.noTab).slice(0, 4).map((n) => n.id);
-      const items = nav.filter((n) => !main.includes(n.id)).concat([{ id: 'einstellungen', label: 'Einstellungen', icon: 'settings' }]);
-      const count = (id) => id === 'chat' ? (PL.chat ? PL.chat.unread : 0) : id === 'neu' ? (PL.feed ? PL.feed.unread() : 0) : 0;
-      const row = (n) => { const c = count(n.id);
-        return `<a class="menu-row ${cur === n.id ? 'active' : ''}" href="#/${n.id}"><span class="ico">${ic(n.icon)}</span>${PL.esc(n.label)}${c ? `<span class="count">${c > 99 ? '99+' : c}</span>` : ''}<span class="chev">${ic('chevron-right', 'i-sm')}</span></a>`; };
-      PL.openSheet(`${PL.sheetHead('Mehr')}<nav class="menu-list" aria-label="Weitere Seiten">${items.map(row).join('')}</nav>`);
-    },
     'add-grade': (d) => PL.gradeSheet({ subjectId: d.subject || (route().name === 'fach' ? route().arg : null), sem: d.sem, cat: d.cat }),
     'open-grade': (d) => PL.gradeSheet({ id: d.id }),
     'add-subject': () => PL.subjectSheet(),
@@ -267,6 +209,8 @@
   };
 
   Object.assign(A, PL.extraActions || {});
+  /* Aktion per Name auslösen (Tastenkürzel, Suche) */
+  PL.runAction = (name, d = {}) => { const fn = A[name]; if (fn) fn(d, null, null); };
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
@@ -315,13 +259,7 @@
   document.addEventListener('input', (e) => {
     if (e.target.dataset.input === 'goal') PL.updateGoal(e.target.value);
   });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') PL.closeSheet();
-    const tag = (e.target.tagName || '').toLowerCase();
-    if (e.key === 'n' && !e.ctrlKey && !e.metaKey && !['input', 'textarea', 'select'].includes(tag) && document.getElementById('sheetLayer').hidden && PL.state.subjects.length) {
-      e.preventDefault(); A['add-grade']({});
-    }
-  });
+  /* Tastenkürzel: siehe shell.js */
 
   PL.onChange(render);
   window.addEventListener('hashchange', () => { PL.closeSheet(); render(); });

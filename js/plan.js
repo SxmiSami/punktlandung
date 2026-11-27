@@ -154,19 +154,28 @@
     const isToday = label === 'Heute', now = nowMin();
     const wt = PL.weekType(date);
     const iso = PL.isoDate(date);
+    const hm = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    const nowRow = () => `<div class="now-row" aria-label="Jetzt"><span>${hm()}</span><i></i></div>`;
+    let placed = false;
     const rows = items.map((it, idx) => {
-      const live = isToday && it.status !== 'off' && toMin(it.start) <= now && now <= toMin(it.end);
-      const past = isToday && toMin(it.end) < now;
+      const s0 = toMin(it.start), s1 = toMin(it.end);
+      const live = isToday && it.status !== 'off' && s0 <= now && now <= s1;
+      const past = isToday && s1 < now;
+      // Jetzt-Linie zwischen den Stunden (läuft gerade eine, zeigt sie den Fortschritt)
+      let pre = '';
+      if (isToday && !placed && (live || now < s0)) { placed = true; if (!live) pre = nowRow(); }
       const tch = teacherHtml(it);
-      return `<button class="lesson-row st-${it.status || 'ok'} ${live ? 'live' : ''} ${past ? 'past' : ''}" style="--c:${it.color}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
+      const prog = live ? Math.round(((now - s0) / Math.max(1, s1 - s0)) * 100) : 0;
+      return `${pre}<button class="lesson-row st-${it.status || 'ok'} ${live ? 'live' : ''} ${past ? 'past' : ''}" style="--c:${it.color}" data-action="lesson-info" data-date="${iso}" data-i="${idx}">
         <span class="lr-time num">${esc(it.start)}<small>${esc(it.end)}</small></span>
         <span class="lr-bar"></span>
-        <span class="row-main"><span class="row-title" style="display:block">${esc(it.name)}${live ? ' <span class="tag tag-live">JETZT</span>' : ''}${tagFor(it)}${it.tasks ? ` <span class="tag tag-hw">${ic('tasks', 'i-sm')} ${it.tasks.length}</span>` : ''}</span>
+        <span class="row-main"><span class="row-title" style="display:block">${esc(it.name)}${live ? ' <span class="tag tag-live">Jetzt</span>' : ''}${tagFor(it)}${it.tasks ? ` <span class="tag tag-hw">${ic('tasks', 'i-sm')} ${it.tasks.length}</span>` : ''}</span>
           <span class="row-sub" style="display:block">${it.from === it.to ? it.from + '.' : it.from + '.–' + it.to + '.'} Std.${it.room || it.newRoom ? ' · ' + roomHtml(it) : ''}${tch ? ' · ' + tch : ''}${it.examName ? ' · ' + esc(it.examName) : it.info ? ' · ' + esc(it.info) : ''}</span></span>
+        ${live ? `<span class="lr-prog"><i style="width:${prog}%"></i></span>` : ''}
       </button>`;
     }).join('');
     return `<section class="card">
-      <div class="card-head"><div><h2 class="card-title">${ic('clock')} Stundenplan</h2><div class="card-sub">${hasPlan ? label + (wt ? ` · ${wt}-Woche` : '') : 'Noch nicht eingetragen'}</div></div><a class="link-btn" href="#/plan">Woche ${ic('chevron-right', 'i-sm')}</a></div>
+      <div class="card-head"><div><h2 class="card-title">${label === 'Heute' ? 'Heute' : esc(label)}</h2><div class="card-sub">${hasPlan ? `${PL.fmtDate(iso).replace(/ \d{4}$/, '')}${wt ? ` · ${wt}-Woche` : ''} · ${items.length} ${items.length === 1 ? 'Stunde' : 'Stunden'}` : 'Noch kein Stundenplan'}</div></div><a class="link-btn" href="#/plan">Woche ${ic('chevron-right', 'i-sm')}</a></div>
       ${!hasPlan ? `<div class="empty"><b>Kein Stundenplan</b>Trag deine Stunden einmal ein – dann siehst du hier immer, was als Nächstes kommt.<br><a class="btn btn-sm btn-primary" href="#/plan" style="margin-top:12px">${ic('plus', 'i-sm')} Stundenplan anlegen</a></div>`
         : rows ? `<div class="list">${rows}</div>` : `<div class="empty">Diese Woche kein Unterricht mehr 🎉</div>`}
     </section>`;
@@ -216,6 +225,54 @@
       <div class="card-head"><div><h2 class="card-title">${ic('tasks')} Hausaufgaben</h2><div class="card-sub">${open.length ? open.length + ' offen' : 'Alles erledigt'}</div></div>
         <a class="link-btn" href="#/aufgaben">Alle ${ic('chevron-right', 'i-sm')}</a></div>
       ${open.length ? `<div class="tasks">${open.slice(0, 5).map((t) => taskRow(t, { showDue: true })).join('')}</div>` : `<div class="empty"><b>Keine offenen Aufgaben</b>Genieß die freie Zeit.</div>`}
+      ${addTaskBtn()}
+    </section>`;
+  };
+
+  /* „Als Nächstes“: Termine und fällige Aufgaben der nächsten 7 Tage, nach Tagen (Motion/Craft) */
+  PL.agendaCard = function () {
+    const today = PL.today();
+    const end = PL.isoDate(PL.addDays(new Date(), 6));
+    const open = st().tasks.filter((t) => !t.done);
+    const over = open.filter((t) => t.due && t.due < today);
+    const days = {};
+    const add = (d, x) => { (days[d] = days[d] || []).push(x); };
+    st().events.filter((e) => e.date >= today && e.date <= end).forEach((e) => add(e.date, { kind: 'ev', e }));
+    open.filter((t) => t.due && t.due >= today && t.due <= end).forEach((t) => add(t.due, { kind: 'task', t }));
+    const w = (x) => (x.kind === 'ev' ? 10 + (PL.LOAD_WEIGHTS[x.e.type] || 0) : (x.t.important ? 1 : 0));
+    const taskItem = (t) => {
+      const sub = PL.subject(t.subjectId);
+      return `<div class="ag-item task" style="--c:${sub ? sub.color : 'var(--muted)'}">
+        <button class="ag-check" data-action="toggle-task" data-id="${t.id}" aria-label="Erledigt">${ic('check')}</button>
+        <button class="ag-main" data-action="open-task" data-id="${t.id}"><span class="ag-title">${esc(t.title)}${t.important ? '<span class="imp">!!!</span>' : ''}</span>
+          <span class="ag-sub">${sub ? `<i class="sd"></i>${esc(sub.name)} · ` : ''}Hausaufgabe${t.due && t.due < today ? ` · <span class="overdue">${esc(dayLabel(t.due))}</span>` : ''}</span></button>
+      </div>`;
+    };
+    const evItem = (e) => {
+      const sub = PL.subject(e.subjectId), n = PL.daysUntil(e.date);
+      const slot = PL.eventSlotText ? PL.eventSlotText(e) : '';
+      return `<button class="ag-item" style="--c:${sub ? sub.color : 'var(--muted)'}" data-action="open-event" data-id="${e.id}">
+        <span class="ag-ic">${esc(sub ? sub.short : (e.type || '?').charAt(0))}</span>
+        <span class="ag-main"><span class="ag-title">${esc(PL.eventName ? PL.eventName(e) : e.title || e.type)}</span><span class="ag-sub">${esc(e.type)}${slot ? ' · ' + slot : ''}</span></span>
+        <span class="countdown ${n <= 0 ? 'today' : n <= 3 ? 'soon' : ''}">${PL.relDays(n)}</span></button>`;
+    };
+    let h = '', count = 0;
+    if (over.length) {
+      h += `<div class="ag-day"><div class="ag-head over"><b>Überfällig</b><span>${over.length}</span></div>${over.slice(0, 4).map(taskItem).join('')}</div>`;
+      count += Math.min(4, over.length);
+    }
+    Object.keys(days).sort().forEach((d) => {
+      if (count >= 12) return;
+      const list = days[d].sort((a, b) => w(b) - w(a)).slice(0, 12 - count);
+      count += list.length;
+      const n = PL.daysUntil(d), dt = PL.parseDate(d);
+      const head = n === 0 ? 'Heute' : n === 1 ? 'Morgen' : DAYS_LONG[(dt.getDay() + 6) % 7];
+      h += `<div class="ag-day"><div class="ag-head"><b>${head}</b><span>${dt.getDate()}. ${PL.MONTHS[dt.getMonth()]}</span></div>
+        ${list.map((x) => (x.kind === 'ev' ? evItem(x.e) : taskItem(x.t))).join('')}</div>`;
+    });
+    return `<section class="card">
+      <div class="card-head"><div><h2 class="card-title">Als Nächstes</h2><div class="card-sub">Termine und Aufgaben der nächsten 7 Tage</div></div><a class="link-btn" href="#/aufgaben">Alle ${ic('chevron-right', 'i-sm')}</a></div>
+      <div class="agenda">${h || `<div class="ag-empty">Nichts geplant in den nächsten 7 Tagen.</div>`}</div>
       ${addTaskBtn()}
     </section>`;
   };
@@ -294,6 +351,19 @@
       });
     }
 
+    // Jetzt-Linie in der heutigen Spalte (wie im Kalender von Motion)
+    const ti = DAYS.findIndex((_, i) => PL.isoDate(PL.addDays(monday, i)) === today);
+    if (!edit && ti >= 0) {
+      for (let p = 1; p <= n; p++) {
+        const a = toMin(s.periods[p - 1].start), b = toMin(s.periods[p - 1].end);
+        const prevEnd = p > 1 ? toMin(s.periods[p - 2].end) : a;
+        let f = null;
+        if (nowM >= a && nowM <= b) f = (nowM - a) / Math.max(1, b - a);
+        else if (nowM > prevEnd && nowM < a) f = 0;  // Pause: Linie an den Anfang der nächsten Stunde
+        if (f != null) { cells += `<div class="tt-now" style="grid-row:${p + 1 + ev};grid-column:${col(ti)}" aria-hidden="true"><i style="top:${(f * 100).toFixed(1)}%"></i></div>`; break; }
+      }
+    }
+
     const range = `${monday.getDate()}. ${PL.MONTHS[monday.getMonth()]} – ${friday.getDate()}. ${PL.MONTHS[friday.getMonth()]}`;
     const legend = PL.untis && PL.untis.connected() && !edit
       ? `<div class="tt-legend"><span class="lg off">Entfall</span><span class="lg moved">Raum-/Lehreränderung</span><span class="lg eva">EVA</span><span class="lg exam">Klausur</span>${ev ? `<span class="lg ev">${ic('calendar', 'i-sm')} Termine der Woche</span>` : ''}<span class="lg hw">${ic('tasks', 'i-sm')} Hausaufgabe</span></div>` : '';
@@ -307,7 +377,7 @@
         <div class="week-label"><b>KW ${PL.isoWeek(monday)}${wt ? ` · ${wt}-Woche` : ''}</b><span>${range}</span></div>
         <button class="icon-btn" data-action="plan-week" data-v="1" aria-label="Nächste Woche">${ic('chevron-right')}</button>
         ${PL.ui.planWeek !== 0 ? `<button class="btn btn-sm" data-action="plan-week" data-v="0">Heute</button>` : ''}
-        ${st().lessons.length ? `<button class="btn btn-sm ${edit ? 'btn-primary' : ''} plan-edit-btn" data-action="plan-edit">${edit ? `${ic('check', 'i-sm')} Fertig` : `${ic('edit', 'i-sm')} Bearbeiten`}</button>` : ''}
+        ${st().lessons.length ? `<button class="btn btn-sm ${edit ? 'btn-primary' : ''} plan-edit-btn" data-action="plan-edit" title="${edit ? 'Fertig' : 'Stundenplan bearbeiten'}" aria-label="${edit ? 'Fertig' : 'Stundenplan bearbeiten'}">${edit ? `${ic('check', 'i-sm')} Fertig` : `${ic('edit', 'i-sm')}<span class="hide-phone">Bearbeiten</span>`}</button>` : ''}
       </div>
       ${edit && st().lessons.length ? `<div class="edit-banner">${ic('edit', 'i-sm')} Bearbeiten – Änderungen gelten jede Woche</div>` : ''}
       <section class="card tt-card ${edit ? 'is-edit' : ''} ${slide ? 'slide-' + slide : ''}" data-swipe-week>
@@ -419,22 +489,28 @@
       if (!g) { g = { key, items: [] }; groups.push(g); }
       g.items.push(t);
     });
-    const label = (k) => (k === 'overdue' ? 'Überfällig' : k === 'none' ? 'Ohne Datum' : dayLabel(k));
+    // Tage als Kacheln links (wie im Craft-Kalender), am Handy als Zeile über den Aufgaben
+    const tile = (g) => {
+      if (g.key === 'overdue') return `<div class="agp-tile"><b>Überfällig</b><span class="wd">${g.items.length} ${g.items.length === 1 ? 'Aufgabe' : 'Aufgaben'}</span></div>`;
+      if (g.key === 'none') return `<div class="agp-tile"><b>Ohne Datum</b></div>`;
+      const d = PL.parseDate(g.key), n = PL.daysUntil(g.key);
+      const rel = n === 0 ? 'Heute' : n === 1 ? 'Morgen' : n === -1 ? 'Gestern' : '';
+      return `<div class="agp-tile"><b>${d.getDate()}. ${PL.MONTHS[d.getMonth()]}</b>${rel ? `<span class="rel">${rel}</span>` : ''}<span class="wd">${DAYS_LONG[(d.getDay() + 6) % 7]}</span></div>`;
+    };
     const segBtn = (v, l) => `<button class="${f === v ? 'on' : ''}" data-action="task-filter" data-v="${v}">${l}</button>`;
     const openCount = st().tasks.filter((t) => !t.done).length;
+    const overCount = st().tasks.filter((t) => !t.done && t.due && t.due < today).length;
     return `<div class="page view page-narrow">
-      <header class="page-head"><div><div class="eyebrow">${openCount} offen</div><h1 class="page-title">Aufgaben</h1></div>
-</header>
-      <div class="seg" style="margin-bottom:18px">${segBtn('open', 'Offen')}${segBtn('done', 'Erledigt')}${segBtn('all', 'Alle')}</div>
-      <div style="max-width:760px">
+      <header class="page-head"><div><div class="eyebrow">${openCount} offen${overCount ? ` · <span style="color:var(--danger-ink)">${overCount} überfällig</span>` : ''}</div><h1 class="page-title">Aufgaben</h1></div>
+        <div class="head-actions"><button class="btn btn-primary hide-phone" data-action="add-task">${ic('plus', 'i-sm')} Hausaufgabe</button></div></header>
+      <div style="margin-bottom:16px"><div class="seg">${segBtn('open', 'Offen')}${segBtn('done', 'Erledigt')}${segBtn('all', 'Alle')}</div></div>
       ${addTaskBtn('top')}
-      ${groups.length ? groups.map((g) => `
-        <div class="tl-group ${g.key === 'overdue' ? 'is-overdue' : ''}">
-          <div class="tl-date">${label(g.key)}${g.key !== 'overdue' && g.key !== 'none' ? `<span>${PL.fmtDate(g.key)}</span>` : ''}</div>
-          <div class="tasks card" style="padding:6px">${g.items.map((t) => taskRow(t)).join('')}</div>
-        </div>`).join('')
+      ${groups.length ? `<div class="agp">${groups.map((g) => `
+        <div class="agp-group ${g.key === 'overdue' ? 'is-overdue' : ''} ${g.key === today ? 'is-today' : ''}">
+          ${tile(g)}
+          <div class="tasks card">${g.items.map((t) => taskRow(t)).join('')}</div>
+        </div>`).join('')}</div>`
         : `<div class="empty"><b>${f === 'done' ? 'Noch nichts erledigt' : 'Keine offenen Aufgaben'}</b>${f === 'done' ? '' : 'Neue Hausaufgaben trägst du oben mit „Hausaufgabe eintragen“ ein.'}</div>`}
-      </div>
     </div>`;
   };
 
@@ -548,23 +624,31 @@
       return date;
     };
     const subjName = (id) => { const s = PL.subject(id); return s ? s.name : ''; };
+    // Am Computer zwei Spalten: links was und bis wann, rechts die Eigenschaften (wie bei Motion)
     PL.openSheet(`
       ${PL.sheetHead(ex ? 'Aufgabe bearbeiten' : 'Neue Hausaufgabe', !ex && cur && cur.subjectId === f.subjectId && !opts.subjectId ? `Aus deiner aktuellen Stunde: ${esc(subjName(cur.subjectId))}` : '')}
-      ${subs.length ? `<div class="field"><span class="field-label">Fach</span>${subjChips(subs, f.subjectId)}</div>` : ''}
-      <div class="field"><label for="tTitle">Was ist zu tun?</label><textarea id="tTitle" class="input" rows="2" maxlength="200" placeholder="z. B. Aufgabe 3 auf S. 42" autofocus>${esc(f.title)}</textarea></div>
-      <div class="field"><span class="field-label">Bis wann?</span>
-        <div class="chips due-chips" data-quick ${next.length ? '' : 'hidden'}>${quickHtml()}</div>
-        <input id="tDue" class="input" type="date" value="${esc(f.due)}">
-        <div class="due-hint" data-due-hint>${dueHint()}</div></div>
-      <div class="field"><label for="tOn">OneNote-Seite <span class="muted" style="font-weight:500">(optional)</span></label>
-        <input id="tOn" class="input" value="${esc(f.onenote ? f.onenote.web || f.onenote.app : '')}" placeholder="Link zur Seite einfügen" autocomplete="off" inputmode="url">
-        <div class="due-hint">In OneNote die Seite rechts anklicken bzw. gedrückt halten → „Link zu Seite kopieren“</div>
-        ${f.onenote ? oneNoteButtons(f.onenote) : ''}</div>
-      <div class="opt-row"><div><div class="t">Wichtig</div><div class="d">Wird mit !!! markiert</div></div><label class="switch"><input type="checkbox" id="tImp" ${f.important ? 'checked' : ''}><span></span></label></div>
+      <div class="ss">
+        <div class="ss-main">
+          <div class="field" style="order:2"><label for="tTitle" class="sr-only">Was ist zu tun?</label><textarea id="tTitle" class="big-input" rows="2" maxlength="200" placeholder="Was ist zu tun?" autofocus>${esc(f.title)}</textarea></div>
+          <div class="field" style="order:3"><span class="prop-label">${ic('clock')} Bis wann?</span>
+            <div class="chips due-chips" data-quick ${next.length ? '' : 'hidden'}>${quickHtml()}</div>
+            <input id="tDue" class="input" type="date" value="${esc(f.due)}">
+            <div class="due-hint" data-due-hint>${dueHint()}</div></div>
+        </div>
+        <aside class="ss-side">
+          ${subs.length ? `<div class="field" style="order:1"><span class="prop-label">${ic('layers')} Fach</span>${subjChips(subs, f.subjectId)}</div>` : ''}
+          <div class="opt-row" style="order:4;border-top:0"><div><div class="t">${ic('flag')}Wichtig</div><div class="d">Wird mit !!! markiert</div></div><label class="switch"><input type="checkbox" id="tImp" ${f.important ? 'checked' : ''}><span></span></label></div>
+          <div class="field" style="order:5;margin-top:6px"><label for="tOn" class="prop-label">${ic('notebook')} OneNote-Seite <span style="font-weight:400">(optional)</span></label>
+            <input id="tOn" class="input" value="${esc(f.onenote ? f.onenote.web || f.onenote.app : '')}" placeholder="Link zur Seite einfügen" autocomplete="off" inputmode="url">
+            <div class="due-hint">In OneNote die Seite rechts anklicken bzw. gedrückt halten → „Link zu Seite kopieren“</div>
+            ${f.onenote ? oneNoteButtons(f.onenote) : ''}</div>
+        </aside>
+      </div>
       <div class="sheet-foot">
-        ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
+        ${ex ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto" aria-label="Löschen" title="Löschen">${ic('trash', 'i-sm')}</button>` : ''}
         <button type="button" class="btn btn-primary" data-save>${ic('check', 'i-sm')} Speichern</button>
       </div>`, {
+      split: true,
       onMount(sh) {
         const due = sh.querySelector('#tDue'), qBox = sh.querySelector('[data-quick]');
         const hint = sh.querySelector('[data-due-hint]');

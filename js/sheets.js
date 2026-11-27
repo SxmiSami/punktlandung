@@ -39,24 +39,32 @@
       sem: opts.sem != null ? Number(opts.sem) : st().settings.currentSem,
       cat: opts.cat || 'K', points: null, date: PL.today(), title: opts.title || '', weight: 1,
     };
+    // Am Computer zwei Spalten: links Punkte und Bezeichnung, rechts Fach, Halbjahr, Art, Gewichtung
     const html = `
       ${PL.sheetHead(existing ? 'Note bearbeiten' : 'Neue Note')}
-      <div class="field"><span class="field-label">Fach</span>
-        <div class="chips" data-subjects>${subs.map((s) => `<button type="button" class="chip chip-subj ${s.id === f.subjectId ? 'on' : ''}" style="--c:${s.color}" data-id="${s.id}"><span class="sw"></span>${esc(s.short)} · ${esc(s.name)}</button>`).join('')}</div>
+      <div class="ss">
+        <div class="ss-main">
+          <div class="field" style="order:4"><span class="prop-label">${ic('target')} Punkte</span>${PL.pointsPicker(f.points)}</div>
+          <div class="field-row" style="order:5">
+            <div class="field"><label for="gTitle" class="prop-label">Bezeichnung</label><input id="gTitle" class="input" value="${esc(f.title)}" placeholder="z. B. 1. Klausur" maxlength="60"></div>
+            <div class="field"><label for="gDate" class="prop-label">Datum</label><input id="gDate" class="input" type="date" value="${esc(f.date)}"></div>
+          </div>
+        </div>
+        <aside class="ss-side">
+          <div class="field" style="order:1"><span class="prop-label">${ic('layers')} Fach</span>
+            <div class="chips" data-subjects>${subs.map((s) => `<button type="button" class="chip chip-subj ${s.id === f.subjectId ? 'on' : ''}" style="--c:${s.color}" data-id="${s.id}"><span class="sw"></span>${esc(s.short)} · ${esc(s.name)}</button>`).join('')}</div>
+          </div>
+          <div class="field" style="order:2"><span class="prop-label">${ic('calendar')} Halbjahr</span><div class="seg seg-block" data-seg="sem">${segHtml(st().settings.semesters.map((n, i) => [i, esc(n)]), f.sem)}</div></div>
+          <div class="field" style="order:3"><span class="prop-label">${ic('file')} Art</span><div class="seg seg-block" data-seg="cat">${segHtml([['K', 'Klausur'], ['S', 'Sonstige Mitarbeit']], f.cat)}</div></div>
+          <div class="field" style="order:6"><span class="prop-label">${ic('bars')} Gewichtung</span><div class="seg" data-seg="weight">${segHtml([[0.5, '½×'], [1, '1×'], [2, '2×']], f.weight || 1)}</div></div>
+        </aside>
       </div>
-      <div class="field"><span class="field-label">Halbjahr</span><div class="seg seg-block" data-seg="sem">${segHtml(st().settings.semesters.map((n, i) => [i, esc(n)]), f.sem)}</div></div>
-      <div class="field"><span class="field-label">Art</span><div class="seg seg-block" data-seg="cat">${segHtml([['K', 'Klausur'], ['S', 'Sonstige Mitarbeit']], f.cat)}</div></div>
-      <div class="field"><span class="field-label">Punkte</span>${PL.pointsPicker(f.points)}</div>
-      <div class="field-row">
-        <div class="field"><label for="gTitle">Bezeichnung</label><input id="gTitle" class="input" value="${esc(f.title)}" placeholder="z. B. 1. Klausur" maxlength="60"></div>
-        <div class="field"><label for="gDate">Datum</label><input id="gDate" class="input" type="date" value="${esc(f.date)}"></div>
-      </div>
-      <div class="field"><span class="field-label">Gewichtung</span><div class="seg" data-seg="weight">${segHtml([[0.5, '½×'], [1, '1×'], [2, '2×']], f.weight || 1)}</div></div>
       <div class="sheet-foot">
-        ${existing ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto">${ic('trash', 'i-sm')}</button>` : ''}
+        ${existing ? `<button type="button" class="btn btn-danger" data-del style="flex:0 0 auto" aria-label="Löschen" title="Löschen">${ic('trash', 'i-sm')}</button>` : ''}
         <button type="button" class="btn btn-primary" data-save>${ic('check', 'i-sm')} Speichern</button>
       </div>`;
     PL.openSheet(html, {
+      split: true,
       onMount(sh) {
         sh.querySelector('[data-subjects]').addEventListener('click', (e) => {
           const b = e.target.closest('[data-id]'); if (!b) return;

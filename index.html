@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Punktlandung</title>
   <meta name="description" content="Noten eintragen, Halbjahre verwalten und deinen Abischnitt live berechnen.">
-  <meta name="theme-color" content="#0B0B0C" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#F2F2F5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E0E10" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,34 +17,44 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <script>
+    /* Seitenleiste schon vor dem ersten Zeichnen richtig breit (schmal am iPad oder eingeklappt) */
+    (function () {
+      var w = window.innerWidth, c = false;
+      try { c = localStorage.getItem('punktlandung:sidebar') === 'rail'; } catch (e) { /* egal */ }
+      if (w >= 768 && (w < 1100 || c)) document.documentElement.classList.add('rail');
+      if (/Mac|iPhone|iPad/.test(navigator.platform || '')) document.documentElement.classList.add('mac');
+    })();
+  </script>
   <div class="app" id="app">
-    <aside class="sidebar" aria-label="Navigation">
-      <a class="brand" href="#/">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">Punkt<span>landung</span></span>
-      </a>
-      <nav class="side-nav" id="sideNav"></nav>
-      <div class="side-foot">
-        <button class="btn btn-primary btn-block" data-action="add-grade">
-          <svg class="i"><use href="#i-plus"/></svg> Note eintragen
-        </button>
-        <button class="side-news" data-action="whats-new" id="sideNews" hidden></button>
-        <a class="side-account" href="#/einstellungen" data-nav="einstellungen" id="sideSettings">
-          <svg class="i"><use href="#i-settings"/></svg> Einstellungen
+    <aside class="sidebar" id="sidebar" aria-label="Navigation">
+      <div class="sb-top">
+        <a class="brand" href="#/" aria-label="Punktlandung – Übersicht">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">Punktlandung</span>
         </a>
-        <div class="side-version" id="sideVersion"></div>
+        <button class="sb-btn sb-hide-rail" data-action="search" aria-label="Suchen" title="Suchen (Strg K)"><svg class="i"><use href="#i-search"/></svg></button>
       </div>
+      <button class="sb-new" data-action="new-entry" title="Neu eintragen">
+        <svg class="i"><use href="#i-plus"/></svg><span>Eintragen</span>
+      </button>
+      <nav class="side-nav" id="sideNav"></nav>
+      <div class="side-foot" id="sideFoot"></div>
     </aside>
+    <div class="sb-scrim" data-action="sidebar-close" aria-hidden="true"></div>
 
-    <main class="main" id="main" tabindex="-1"></main>
+    <div class="panel" id="panel">
+      <header class="topbar" id="topbar"></header>
+      <main class="main" id="main" tabindex="-1"></main>
+    </div>
 
-    <div class="dock">
+    <div class="dock" id="dock">
       <nav class="tabbar" id="tabbar" aria-label="Navigation"></nav>
-      <button class="fab" id="fab" data-action="add-grade" aria-label="Note eintragen" hidden>
+      <button class="fab" id="fab" data-action="new-entry" aria-label="Neu eintragen" hidden>
         <svg class="i"><use href="#i-plus"/></svg>
       </button>
     </div>
@@ -108,6 +118,16 @@
       <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7.5 8 5.5 8-5.5"/></symbol>
       <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M3.5 10v4a1 1 0 0 0 1 1H7l9 4.5v-15L7 9H4.5a1 1 0 0 0-1 1Z"/><path d="M7 15v4.5M19.5 9.5a3.5 3.5 0 0 1 0 5"/></symbol>
       <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5"/><path d="M21 3 14.5 21l-4-7.5L3 9.5 21 3Z"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.5-4.5"/></symbol>
+      <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+      <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+      <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+      <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></symbol>
+      <symbol id="i-bars" viewBox="0 0 24 24"><path d="M5 20v-7M10 20V8M15 20v-5M20 20V4"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5-12-7.5Z"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
     </defs>
   </svg>
 
@@ -131,6 +151,7 @@
   <script src="js/chatui.js"></script>
   <script src="js/whatsnew.js"></script>
   <script src="js/admin.js"></script>
+  <script src="js/shell.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

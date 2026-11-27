@@ -32,21 +32,27 @@
     const t = pref === 'auto' ? (mq.matches ? 'light' : 'dark') : pref;
     document.documentElement.dataset.theme = t;
     const meta = document.querySelectorAll('meta[name="theme-color"]');
-    meta.forEach((m) => m.setAttribute('content', t === 'light' ? '#F2F2F5' : '#0B0B0C'));
+    meta.forEach((m) => m.setAttribute('content', t === 'light' ? '#FFFFFF' : '#0F0F11'));
   };
   mq.addEventListener && mq.addEventListener('change', PL.applyTheme);
 
   /* ---- Sheet ---- */
   const layer = () => document.getElementById('sheetLayer');
   const sheetEl = () => document.getElementById('sheet');
-  let lastFocus = null;
+  let lastFocus = null, closeTimer = null;
+  /* opts: wide, split (zwei Spalten am Computer), cls (weitere Klassen), layer ('top' = oben statt mittig), onMount */
   PL.openSheet = function (html, opts = {}) {
-    lastFocus = document.activeElement;
+    // Ein gerade schließendes Fenster darf das neue nicht mehr wegräumen
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    const l = layer();
+    if (l.hidden) lastFocus = document.activeElement;
     const sh = sheetEl();
-    sh.className = 'sheet' + (opts.wide ? ' wide' : '');
+    sh.className = 'sheet' + (opts.wide ? ' wide' : '') + (opts.split ? ' two-col' : '') + (opts.cls ? ' ' + opts.cls : '');
+    sh.style.transform = '';
     sh.innerHTML = '<div class="sheet-handle"></div>' + html;
-    layer().hidden = false;
-    layer().classList.remove('closing');
+    sh.scrollTop = 0;
+    l.className = 'sheet-layer' + (opts.layer ? ' ' + opts.layer : '');
+    l.hidden = false;
     document.body.style.overflow = 'hidden';
     if (opts.onMount) opts.onMount(sh);
     setTimeout(() => { const f = sh.querySelector('[autofocus]'); if (f && window.innerWidth >= 720) f.focus(); }, 60);
@@ -57,10 +63,11 @@
     if (l.hidden || l.classList.contains('closing')) return;
     const sh = sheetEl();
     sh.classList.add('closing'); l.classList.add('closing');
-    setTimeout(() => {
-      l.hidden = true; sh.innerHTML = ''; sh.style.transform = '';
+    closeTimer = setTimeout(() => {
+      closeTimer = null;
+      l.hidden = true; l.className = 'sheet-layer'; sh.innerHTML = ''; sh.style.transform = '';
       document.body.style.overflow = '';
-      if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+      if (lastFocus && lastFocus.focus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
     }, 200);
   };
   PL.sheetHead = (title, sub) => `
@@ -197,6 +204,57 @@
       </div>
       ${legend}
     </section>`;
+  };
+
+  /* Kleine Verlaufslinie (Kennzahl-Kacheln) */
+  PL.spark = function (vals) {
+    const v = (vals || []).filter((x) => x != null && !isNaN(x));
+    if (v.length < 2) return '';
+    const W = 64, H = 26, p = 3;
+    let min = Math.min(...v), max = Math.max(...v);
+    if (max - min < 1) { min -= .5; max += .5; }
+    const x = (i) => p + (i / (v.length - 1)) * (W - 2 * p);
+    const y = (n) => p + (1 - (n - min) / (max - min)) * (H - 2 * p);
+    const d = v.map((n, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(n).toFixed(1)}`).join(' ');
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${d}"/><circle cx="${x(v.length - 1).toFixed(1)}" cy="${y(v[v.length - 1]).toFixed(1)}" r="2.6"/></svg>`;
+  };
+
+  /* Veränderung mit Pfeil: z. B. „↑ 0,4 ggü. Q1.2“ */
+  PL.delta = function (d, label, opts = {}) {
+    if (d == null || isNaN(d)) return '';
+    const r = Math.round(d * 10) / 10;
+    const good = opts.invert ? r < 0 : r > 0;
+    const cls = r === 0 ? '' : good ? 'up' : 'down';
+    const arrow = r === 0 ? '' : PL.icon(r > 0 ? 'arrow-up' : 'arrow-down');
+    return `<span class="delta ${cls}">${arrow}${PL.fmt(Math.abs(r), 1)}${label ? ' ' + label : ''}</span>`;
+  };
+
+  /* Kleiner Fortschrittsring (Einrichtung) */
+  PL.progRing = function (frac) {
+    const r = 7, c = 2 * Math.PI * r;
+    return `<svg class="prog-ring" viewBox="0 0 18 18" aria-hidden="true"><circle class="bg" cx="9" cy="9" r="${r}"/><circle class="fg" cx="9" cy="9" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.max(0, Math.min(1, frac)))}"/></svg>`;
+  };
+
+  /* Zeitleiste mit Schritten: [{ s: 'done'|'cur'|'bad'|'', t, d, html }] */
+  PL.stepsHtml = function (steps) {
+    const mk = (s) => (s === 'done' ? PL.icon('check') : s === 'bad' ? PL.icon('x') : '');
+    return `<ol class="steps-tl">${steps.map((x) => `<li class="${x.s || ''}"><span class="st-mk">${mk(x.s)}</span>
+      <div class="st-body"><b>${x.t}</b>${x.d ? `<span>${x.d}</span>` : ''}${x.html || ''}</div></li>`).join('')}</ol>`;
+  };
+
+  /* Schnitt pro Halbjahr als Balken, aktuelles Halbjahr dunkel, Ziel gestrichelt (wie bei Steep) */
+  PL.semChart = function (vals, cur, goal) {
+    const have = vals.filter((v) => v != null);
+    if (!have.length) return '<div class="empty" style="border:0">Noch keine Halbjahresnoten</div>';
+    const lo = Math.max(0, Math.floor(Math.min(...have, goal != null ? goal : 15) - 3));
+    const pct = (v) => Math.max(6, Math.min(100, ((v - lo) / (15 - lo)) * 100));
+    const cols = vals.map((v, i) => `<div class="sc-col ${i === cur ? 'cur' : ''}">
+      <div class="sc-bar ${v == null ? 'empty' : ''} ${i === cur ? 'cur' : ''}" ${v != null ? `style="height:${pct(v)}%"` : ''}>${v != null ? `<span>${PL.fmt(v, 1)}</span>` : ''}</div>
+      <b>${PL.esc(PL.semName(i))}</b></div>`).join('');
+    // Ziel-Linie: Abstand von unten innerhalb der Balkenfläche (ohne Beschriftung oben und unten)
+    const g = goal != null ? `<div class="sc-goal" style="bottom:calc(24px + (100% - 42px) * ${(pct(goal) / 100).toFixed(3)})"></div>` : '';
+    return `<div class="sc-chart" role="img" aria-label="Schnitt pro Halbjahr">${g}${cols}</div>
+      ${goal != null ? `<div class="sc-legend"><i></i>Ziel: ${PL.fmt(goal, 1)} Punkte im Schnitt</div>` : ''}`;
   };
 
   PL.ring = function (frac) {

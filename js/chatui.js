@@ -287,7 +287,8 @@
     const pane = document.querySelector('.chat-page.has-active .chat-pane');
     if (!pane) return;
     const vv = window.visualViewport;
-    if (!vv || window.innerWidth >= 960) { pane.style.height = ''; pane.style.transform = ''; return; }
+    // Ab iPad-Breite liegt die Unterhaltung im Inhaltsbereich (siehe shell.js): dort nichts anpassen
+    if (!vv || (PL.isDesk ? PL.isDesk() : window.innerWidth >= 768)) { pane.style.height = ''; pane.style.transform = ''; return; }
     pane.style.height = vv.height + 'px';
     pane.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : '';
     if (stickBottom) { const sc = pane.querySelector('[data-chat-scroll]'); if (sc) sc.scrollTop = sc.scrollHeight; }

@@ -3,6 +3,33 @@
 Die aktuelle Version steht in der App unten in der Seitenleiste bzw. unter **Einstellungen**.
 Bei einem Update die Nummer in `js/data.js` (`PL.VERSION`) und `sw.js` (`VERSION`) erhöhen – und in `js/data.js` bei `PL.CHANGELOG` einen kurzen Eintrag für „Was ist neu“ ergänzen.
 
+## 0.16.0
+- **Komplett neues Design** nach Vorbildern aus Shopify, Steep, Cal.com, Craft, NotebookLM, Miro, WorkOS, Motion und Wise:
+  - Farben: ruhige, leicht warme Grautöne, Karten als zarte Flächen statt mit Rand, Orange (Farbe des Landepunkts im App-Icon) nur noch als Akzent. Dunkel: fast Schwarz mit abgestuften Flächen
+  - Schrift: Geist in ruhigeren Stärken, dazu Geist Mono für Zahlen, Kürzel und Uhrzeiten
+  - Noten-Abzeichen, Schilder und Countdowns als zarte Farbflächen mit dunkler Schrift (besser lesbar, auch Gelb)
+  - Umschalter wie bei Wise: helles Feld auf grauer Spur
+- **Für jedes Gerät eigenes Gerüst**:
+  - iPhone: schwebende Tab-Leiste mit Namen unter den Symbolen, die beim Runterscrollen schrumpft (wie unter iOS 26). Der Plus-Knopf rechts daneben ist orange wie der Landepunkt. „Mehr“ mit Suche und farbigen Symbolen wie in den iOS-Einstellungen
+  - iPad hochkant: schmale Icon-Leiste, die sich als ganze Seitenleiste über den Inhalt aufklappen lässt
+  - Computer: Seitenleiste mit Gruppen (Schule, Austausch) und deinen Fächern samt Schnitt, einklappbar zur Icon-Leiste. Der Inhalt liegt in einem schwebenden Bereich mit Kopfzeile (Pfad, Suche, Neuigkeiten, Hell/Dunkel)
+- **Neue Übersicht**:
+  - Kennzahlen oben: Abiturschnitt, Notenschnitt mit Verlaufslinie und Veränderung zum letzten Halbjahr, offene Aufgaben, nächste Klausur
+  - Abiturschnitt als große Zahl mit Fortschritt bis 900 Punkte und dem **Wunschschnitt als gestrichelte Linie**
+  - Notenschnitt pro Halbjahr als Balken, aktuelles Halbjahr dunkel, Ziel gestrichelt
+  - **Als Nächstes**: Termine und fällige Aufgaben der nächsten 7 Tage nach Tagen, Aufgaben direkt abhaken
+  - Heute: Stundenplan mit Jetzt-Linie und Fortschritt der laufenden Stunde
+  - **Einrichtung als Zeitleiste** (wie bei Wise): Prüfungsfächer, Stundenplan, erste Note, Konto – verschwindet, wenn alles erledigt ist
+  - Hinweis, wenn Beispieldaten aktiv sind, mit „Eigene Daten anlegen“
+- **Eintragen**: Der Plus-Knopf fragt „Was möchtest du eintragen?“ (Note, Hausaufgabe, Termin, Datei, Stunde). Am Computer zusätzlich eine Eintragen-Leiste auf der Übersicht
+- **Fenster für Note und Hausaufgabe** am Computer in zwei Spalten: links Punkte bzw. Aufgabe, rechts Fach, Halbjahr, Art usw. (wie bei Motion)
+- **Suche** mit Strg K (Mac: ⌘ K) oder „/“: Seiten, Fächer, Aufgaben, Termine, Dateien, Chats und Befehle. Tastenkürzel N (Note), H (Hausaufgabe), T (Termin), D (Datei), Strg ↵ speichert im offenen Fenster
+- **Fächer**: Karten mit großem Schnitt, Balken pro Halbjahr in Fachfarbe (aktuelles Halbjahr kräftig, Prognose schraffiert) und der nächsten Klausur
+- **Abitur**: Zulassung & Bestehen als Zeitleiste; der Wunschschnitt im Ziel-Rechner wird gespeichert
+- **Aufgaben** nach Tagen mit Tageskacheln (wie im Craft-Kalender)
+- **Kalender**: Jetzt-Linie in der heutigen Spalte, Stunden als zarte Flächen in Fachfarbe
+- **Einstellungen** als Übersicht mit Suche (wie bei Cal.com), jeder Bereich als eigene Seite; am Computer mit Navigation links. Neu: Übersicht der Tastenkürzel
+
 ## 0.15.0
 - **Neuer Look** nach Vorbildern aus echten Apps (Apple Card, Pocket Casts, Revolut):
   - Farben: Orange statt Lila als Akzent, neutrales Grau als Hintergrund (dunkel: fast Schwarz), keine Verläufe mehr

@@ -2,11 +2,17 @@
 window.PL = window.PL || {};
 
 /* App-Version – bei jedem Update erhöhen (und in sw.js anpassen) */
-PL.VERSION = '0.15.7';
+PL.VERSION = '0.16.0';
 
 /* „Was ist neu“ – erscheint nach einem Update einmal pro Konto (neueste Version zuerst).
    Bei einem Update hier einen Eintrag ergänzen (kurz, für alle verständlich). link = optional */
 PL.CHANGELOG = [
+  { v: '0.16.0', items: [
+    { icon: 'sparkle', title: 'Komplett neues Design', text: 'Ruhigere Flächen, große Zahlen und eine neue Übersicht mit Kennzahlen, deinem Abi-Fortschritt und „Als Nächstes“ für die kommenden 7 Tage.' },
+    { icon: 'target', title: 'Dein Wunschschnitt', text: 'Stell im Ziel-Rechner (Abitur) deinen Wunschschnitt ein – er erscheint als gestrichelte Linie auf der Übersicht.' },
+    { icon: 'plus', title: 'Schneller eintragen', text: 'Der Plus-Knopf fragt, was du eintragen willst: Note, Hausaufgabe, Termin, Datei oder Stunde.' },
+    { icon: 'device', title: 'Für jedes Gerät', text: 'Am iPhone eine Leiste mit Namen, die beim Scrollen schrumpft, am iPad eine schmale Seitenleiste, am Computer Suche mit Strg K und Tastenkürzel.' },
+  ] },
   { v: '0.15.0', items: [
     { icon: 'sparkle', title: 'Neuer Look', text: 'Ruhigere Farben mit Orange als Akzent, eine neue Schrift und flache Karten – hell wie dunkel.' },
     { icon: 'home', title: 'Neue Leiste unten', text: 'Die Navigation schwebt jetzt als Leiste über der Seite, der Plus-Knopf sitzt rechts daneben.' },
@@ -143,7 +149,7 @@ PL.demoState = function () {
 
   return {
     version: 1,
-    settings: Object.assign(PL.defaultSettings(), { seenVersion: PL.VERSION, name: 'Alex', currentSem: 2, abWeeks: true, abRef: PL.isoDate(PL.mondayOf(today)) }),
+    settings: Object.assign(PL.defaultSettings(), { seenVersion: PL.VERSION, name: 'Alex', currentSem: 2, abWeeks: true, abRef: PL.isoDate(PL.mondayOf(today)), demo: true, goal: 1.5 }),
     lessons,
     tasks,
     subjects,

@@ -2,7 +2,8 @@
 
 Eine Noten-App fürs Abitur, die am PC und auf dem Handy läuft (als installierbare Web-App / PWA).
 
-- **Übersicht:** Abiturschnitt live mit Prognose, Notenschnitt pro Halbjahr, Verlauf, Termine, letzte Noten und Belastung der nächsten Wochen
+- **Übersicht:** Kennzahlen, Abiturschnitt live mit Prognose und Wunschschnitt, Notenschnitt pro Halbjahr, „Als Nächstes“ für die kommenden 7 Tage, Stundenplan von heute, letzte Noten und Belastung der nächsten Wochen
+- **Für jedes Gerät:** am iPhone eine schwebende Tab-Leiste, am iPad eine schmale Seitenleiste, am Computer Seitenleiste, Suche (Strg K) und Tastenkürzel
 - **Fächer:** Klausuren und sonstige Mitarbeit pro Halbjahr (Q1.1–Q2.2), Zeugnisnoten überschreiben die Rechnung
 - **Abitur:** Block I (Halbjahre, LK doppelt) und Block II (Prüfungen schriftlich/mündlich), Zulassungs-Check und Ziel-Rechner
 - **Kalender:** Stundenplan mit Doppelstunden und A/B-Wochen, dazu Klausuren und Tests mit Countdown
