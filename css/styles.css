@@ -144,29 +144,47 @@ a { color: inherit; text-decoration: none; }
 .side-link .count { margin-left: auto; font-size: 12px; color: var(--muted); }
 .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 
-/* Tab bar (mobil): schwebende Pille, rechts daneben der runde +-Knopf */
+/* Tab bar (mobil): kurze Pille mit 4 Seiten + ☰, mittig, rechts daneben der runde +-Knopf */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: calc(var(--safe-b) + 14px); z-index: 40;
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  pointer-events: none;
+}
+.dock > * { pointer-events: auto; }
+@media (min-width: 960px) { .dock { display: none; } }
 .tabbar {
-  position: fixed; left: 14px; right: 14px; bottom: calc(var(--safe-b) + 12px); z-index: 40;
-  height: 64px; padding: 4px; border-radius: 32px;
-  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center;
+  height: 56px; padding: 4px; border-radius: 28px;
+  display: flex; align-items: center; gap: 2px;
   background: color-mix(in srgb, var(--card) 86%, transparent);
   backdrop-filter: saturate(160%) blur(20px);
   -webkit-backdrop-filter: saturate(160%) blur(20px);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-float);
 }
-.app:has(.fab:not([hidden])) .tabbar { right: calc(14px + 64px + 10px); }
 .tab {
-  height: 54px; border-radius: 27px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  font-size: 11px; font-weight: 600; color: var(--text);
+  width: 52px; height: 46px; border-radius: 23px;
+  display: grid; place-items: center;
+  color: var(--text);
   transition: background .15s;
 }
 .tab .i { width: 22px; height: 22px; stroke-width: 2.1; }
 .tab.active { background: color-mix(in srgb, var(--text) 9%, transparent); }
 .tab.active .i { stroke-width: 2.5; }
-/* Ab 6 Reitern passt die Beschriftung nicht mehr in die Pille: nur Icons */
-.tabbar[data-n="6"] .tab > span, .tabbar[data-n="7"] .tab > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Nur Icons: die Namen bleiben für Screenreader */
+.tab > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ☰-Menü mit den übrigen Seiten */
+.menu-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.menu-row {
+  display: flex; align-items: center; gap: 14px; padding: 10px 8px; border-radius: 16px;
+  font-size: 16px; font-weight: 600; color: var(--text); transition: background .12s;
+}
+.menu-row:hover, .menu-row.active { background: var(--card-2); }
+.menu-row .ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--card-2); flex: none; }
+.menu-row.active .ico { background: var(--card); }
+.menu-row .count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 99px; display: grid; place-items: center; background: var(--danger); color: #fff; font-size: 12px; font-weight: 800; }
+.menu-row .chev { margin-left: auto; color: var(--muted); }
+.menu-row .count + .chev { margin-left: 0; }
 .tab-fab {
   justify-self: center;
   width: 56px; height: 56px; border-radius: 28px; margin-top: -26px;
@@ -765,8 +783,8 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
 
 /* ---------- Schwebender Plus-Knopf (mobil) ---------- */
 .fab {
-  position: fixed; z-index: 45; right: 14px; bottom: calc(var(--safe-b) + 12px);
-  width: 64px; height: 64px; border-radius: 32px; display: grid; place-items: center; color: var(--text);
+  flex: none;
+  width: 56px; height: 56px; border-radius: 28px; display: grid; place-items: center; color: var(--text);
   background: color-mix(in srgb, var(--card) 86%, transparent);
   backdrop-filter: saturate(160%) blur(20px); -webkit-backdrop-filter: saturate(160%) blur(20px);
   border: 1px solid var(--line);
@@ -774,11 +792,11 @@ details.faq code { background: var(--card-2); padding: 1px 6px; border-radius: 6
   transition: transform .15s;
 }
 .fab:active { transform: scale(.93); }
-.fab .i { width: 26px; height: 26px; stroke-width: 2.2; }
-@media (min-width: 960px) { .fab { display: none; } }
+.fab .i { width: 24px; height: 24px; stroke-width: 2.2; }
+.fab[hidden] { display: none; }
 .tab { position: relative; }
 .tab-badge {
-  position: absolute; top: 4px; left: calc(50% + 5px); min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px;
+  position: absolute; top: 2px; left: calc(50% + 4px); min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px;
   background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 800; font-style: normal; display: grid; place-items: center;
 }
 .side-version { font-size: 11.5px; color: var(--muted); padding: 2px 12px 0; font-weight: 600; }
