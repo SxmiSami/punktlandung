@@ -10,7 +10,7 @@ window.PL_CONFIG = {
   // Bei Änderungen auch die 250 MB in supabase/lernzettel.sql anpassen.
   // GIFs im Chat: kostenloser Schlüssel von https://developers.giphy.com (siehe SYNC-EINRICHTEN.md, GIFs).
   // Leer lassen = GIF-Suche aus (GIF-Links von GIPHY/Tenor werden trotzdem als Bild gezeigt).
-  giphyKey: '',
+  giphyKey: 'Z4tKyvjaKXIbXsitqq7jDHcPpmxRyf2u',
 
   notes: { bucket: 'lernzettel', quotaMB: 250, totalMB: 1024, maxFileMB: 25 },
 };
