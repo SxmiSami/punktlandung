@@ -262,7 +262,7 @@
     if (ev) cells += `<div class="tt-evs-lbl" style="grid-row:2">${ic('calendar', 'i-sm')}</div>`;
     for (let p = 1; p <= n; p++) {
       const per = s.periods[p - 1];
-      cells += `<div class="tt-time" style="grid-row:${p + 1 + ev}"><b>${p}</b><span>${esc(per.start)}</span></div>`;
+      cells += `<div class="tt-time" style="grid-row:${p + 1 + ev}"><b>${p}</b><span>${esc(per.start)}</span><span class="tt-end">${esc(per.end)}</span></div>`;
       for (let d = 0; d < 5; d++) {
         cells += edit
           ? `<button class="tt-slot" style="grid-row:${p + 1 + ev};grid-column:${col(d)}" data-action="add-lesson" data-day="${d}" data-period="${p}" aria-label="${DAYS[d]} ${p}. Stunde hinzufügen">${ic('plus', 'i-sm')}</button>`
