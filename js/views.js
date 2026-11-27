@@ -506,7 +506,7 @@
       <div class="grid">
         ${tab === 'allgemein' ? `<section class="card">
           <div class="card-head"><h2 class="card-title">Profil & Darstellung</h2></div>
-          <div class="field"><label for="setName">Dein Name</label><input id="setName" class="input" data-setting="name" value="${esc(s.name)}" placeholder="Optional" maxlength="30"></div>
+          <div class="field"><label for="setName">Dein Name</label><input id="setName" class="input" data-setting="name" value="${esc(s.name)}" placeholder="Optional" maxlength="30"><div class="hint">Höchstens 3 Änderungen pro Tag</div></div>
           <div class="opt-row"><div><div class="t">Design</div><div class="d">Hell, dunkel oder wie dein Gerät</div></div>${seg('theme', [['auto', 'Auto'], ['dark', 'Dunkel'], ['light', 'Hell']])}</div>
           <div class="opt-row"><div><div class="t">Aktuelles Halbjahr</div><div class="d">Neue Noten landen standardmäßig hier</div></div>${seg('currentSem', s.semesters.map((n, i) => [i, esc(n)]))}</div>
         </section>

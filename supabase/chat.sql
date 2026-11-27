@@ -28,6 +28,13 @@ create table if not exists public.chat_members (
 );
 create index if not exists chat_members_user on public.chat_members (user_id);
 
+-- Namenswechsel (nur für die Sperre gegen Spam, siehe pl_chat_set_name)
+create table if not exists public.chat_name_changes (
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  changed_at timestamptz not null default now()
+);
+create index if not exists chat_name_changes_user on public.chat_name_changes (user_id, changed_at);
+
 create table if not exists public.chat_messages (
   id          uuid primary key default gen_random_uuid(),
   chat_id     uuid not null references public.chats (id) on delete cascade,
@@ -60,6 +67,7 @@ grant insert (id, chat_id, sender_name, kind, body, payload) on public.chat_mess
 alter table public.chats enable row level security;
 alter table public.chat_members enable row level security;
 alter table public.chat_messages enable row level security;
+alter table public.chat_name_changes enable row level security;  -- keine Policies: nur über die Funktion
 
 drop policy if exists "Eigene Chats sehen" on public.chats;
 drop policy if exists "Mitglieder sehen" on public.chat_members;
@@ -202,11 +210,28 @@ as $$
 $$;
 
 -- Eigenen Anzeigenamen in allen Chats setzen
+-- Gegen Spam: höchstens 5 echte Namenswechsel in 24 Stunden (die App erlaubt 3).
+-- Leere Einträge (z. B. neu hinzugefügt) werden immer ohne Zählen ausgefüllt.
 create or replace function public.pl_chat_set_name(my_name text)
 returns void
-language sql security definer set search_path = ''
+language plpgsql security definer set search_path = ''
 as $$
-  update public.chat_members m set name = left(coalesce(my_name, ''), 40) where m.user_id = auth.uid();
+declare
+  me uuid := auth.uid();
+  nm text := left(trim(coalesce(my_name, '')), 40);
+begin
+  if me is null then raise exception 'pl_not_signed_in'; end if;
+  if exists (select 1 from public.chat_members m where m.user_id = me and m.name <> '' and m.name <> nm) then
+    if (select count(*) from public.chat_name_changes c
+        where c.user_id = me and c.changed_at > now() - interval '24 hours') >= 5 then
+      update public.chat_members m set name = nm where m.user_id = me and m.name = '';
+      return;  -- gesperrt: alter Name bleibt
+    end if;
+    insert into public.chat_name_changes (user_id) values (me);
+    delete from public.chat_name_changes c where c.user_id = me and c.changed_at < now() - interval '2 days';
+  end if;
+  update public.chat_members m set name = nm where m.user_id = me and m.name <> nm;
+end;
 $$;
 
 -- Übersicht: letzte Nachricht und Zahl der ungelesenen pro Chat

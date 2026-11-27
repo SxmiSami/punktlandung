@@ -277,8 +277,32 @@
     fn(el.dataset, el, e);
   });
 
+  /* Gegen Spam: höchstens 3 Namenswechsel in 24 Stunden.
+     Gemerkt in settings.nameChanges (Zeitpunkte) – mit Konto also für alle Geräte.
+     Der Server (pl_chat_set_name) hat zusätzlich eine eigene Grenze. */
+  const NAME_MAX = 3, NAME_WINDOW = 24 * 3600e3;
+  function nameChangeOk(input) {
+    const s = PL.state.settings, old = (s.name || '').trim(), v = input.value.trim();
+    if (v === old) { input.value = s.name || ''; return false; }
+    const now = Date.now();
+    const recent = (s.nameChanges || []).filter((x) => typeof x === 'number' && x <= now && now - x < NAME_WINDOW).sort((a, b) => a - b);
+    // Den allerersten Namen setzen zählt nicht
+    if (!old) { s.nameChanges = recent; return true; }
+    if (recent.length >= NAME_MAX) {
+      input.value = s.name || '';
+      const mins = Math.ceil((recent[0] + NAME_WINDOW - now) / 60000);
+      PL.toast(`Du hast deinen Namen schon ${NAME_MAX}× geändert – wieder möglich in ${mins >= 60 ? Math.ceil(mins / 60) + ' Std.' : mins + ' Min.'}`);
+      return false;
+    }
+    s.nameChanges = recent.concat(now);
+    const left = NAME_MAX - s.nameChanges.length;
+    PL.toast(left ? `Name geändert – heute noch ${left}× möglich` : 'Name geändert – für heute war das die letzte Änderung');
+    return true;
+  }
+
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.dataset.setting === 'name' && !nameChangeOk(t)) return;
     if (t.dataset.setting) {
       PL.state.settings[t.dataset.setting] = t.type === 'checkbox' ? t.checked : t.value.trim();
       if (t.dataset.setting === 'abWeeks' && t.checked && !PL.state.settings.abRef) PL.state.settings.abRef = PL.isoDate(PL.mondayOf(new Date()));
