@@ -1297,7 +1297,7 @@ button.lesson-row { width: 100%; text-align: left; }
 
 @media (min-width: 960px) {
   .page.chat-page { max-width: none; }
-  .chat-layout { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 12px; height: calc(100dvh - var(--safe-t) - var(--safe-b) - 68px); min-height: 460px; }
+  .chat-layout { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 12px; height: calc(100dvh - var(--safe-t) - var(--safe-b) - 68px); min-height: 460px; }
   .chat-list-pane, .chat-page.has-active .chat-list-pane {
     display: flex; flex-direction: column; min-height: 0;
     background: var(--bg-soft); border: 1px solid var(--line); border-radius: 20px; padding: 18px 10px 10px;
@@ -1316,6 +1316,9 @@ button.lesson-row { width: 100%; text-align: left; }
   .chat-head .who-txt b { font-size: 19px; }
   .chat-back { display: none; }
   .chat-scroll { padding: 16px 24px 10px; }
+  /* Nachrichten an den Rändern der Unterhaltung ausrichten statt in einer schmalen Mittelspalte */
+  .msgs { max-width: none; }
+  .msg { max-width: min(70%, 560px); }
   /* Eingabe als Box: Text oben, Werkzeuge unten links, Senden unten rechts */
   .chat-compose {
     display: grid; grid-template-columns: auto auto 1fr auto; grid-template-areas: "ta ta ta ta" "plus gif . send";
